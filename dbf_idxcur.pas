@@ -10,9 +10,6 @@ uses
   dbf_cursor,
   dbf_idxfile,
   dbf_prsdef,
-{$ifndef WINDOWS}
-  dbf_wtil,
-{$endif}
   dbf_common;
 
 type
@@ -30,7 +27,6 @@ type
     procedure SetPhysicalRecNo(RecNo: Integer); override;
     procedure SetSequentialRecNo(RecNo: Integer); override;
 
-    procedure VariantStrToBuffer(Key: Variant; ABuffer: PChar);
   public
     constructor Create(DbfIndexFile: TIndexFile);
     destructor Destroy; override;
@@ -58,11 +54,6 @@ type
 
 //====================================================================
 implementation
-
-{$ifdef WINDOWS}
-uses
-  Windows;
-{$endif}
 
 //==========================================================
 //============ TIndexCursor
@@ -137,19 +128,10 @@ end;
 
 {$ifdef SUPPORT_VARIANTS}
 
-procedure TIndexCursor.VariantStrToBuffer(Key: Variant; ABuffer: PChar);
-var
-  currLen: Integer;
-  StrKey: string;
-begin
-  StrKey := Key;
-  currLen := TranslateString(GetACP, FIndexFile.CodePage, PChar(StrKey), ABuffer, -1);
-  // we have null-terminated string, pad with spaces if string too short
-  FillChar(ABuffer[currLen], TIndexFile(PagedFile).KeyLen-currLen, ' ');
-end;
-
 function TIndexCursor.VariantToBuffer(Key: Variant; ABuffer: PChar): TExpressionType;
 // assumes ABuffer is large enough ie. at least max key size
+var
+  currLen: Integer;
 begin
   if (TIndexFile(PagedFile).KeyType='N') then
   begin
@@ -161,7 +143,10 @@ begin
     end;
     Result := etInteger;
   end else begin
-    VariantStrToBuffer(Key, ABuffer);
+    StrPLCopy(ABuffer, Key, TIndexFile(PagedFile).KeyLen);
+    // we have null-terminated string, pad with spaces if string too short
+    currLen := StrLen(ABuffer);
+    FillChar(ABuffer[currLen], TIndexFile(PagedFile).KeyLen-currLen, ' ');
     Result := etString;
   end;
 end;

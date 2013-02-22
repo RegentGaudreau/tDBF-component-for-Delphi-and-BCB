@@ -33,25 +33,6 @@ BUGS & WARNINGS
 
 
 ------------------------
-V6.9.2
-
-- compile fixes for delphi 4, 5 (pdouble)
-- fix indexes to work properly with ansi upper/lower casing
-- fix memory leak when inserting duplicate item in AVL tree 
-- add german localization strings (thx heiko)
-
-------------------------
-V6.9.1
-
-- fix last memo field getting truncated (patch by dhdorrough)
-- add dbf_collate unit to the packages
-- fix index result too long bug
-- add support for big endian
-- fix non-raw string field filter
-- fix index inserts/updates to be reverted on key violations
-- allow lookups to ignore active filter
-
-------------------------
 V6.9.0
 
 - BDE compatible index collation: MDX/NDXes have to be rebuilt!

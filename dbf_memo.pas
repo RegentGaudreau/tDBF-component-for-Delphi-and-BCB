@@ -238,7 +238,7 @@ begin
     exit;
   end else
   if numBytes < RecordSize then
-    FillChar(FBuffer[numBytes], RecordSize-numBytes, #0);
+    FillChar(FBuffer[RecordSize-numBytes], numBytes, #0);
 
   bytesLeft := GetMemoSize;
   // bytesLeft <> -1 -> memo size is known (FoxPro, dBase4)
@@ -373,11 +373,11 @@ begin
       totsize := Src.Size + bytesBefore + bytesAfter;
       if FDbfVersion <> xFoxPro then
       begin
-        PBlockHdr(FBuffer)^.MemoType := SwapIntLE($0008FFFF);
-        PBlockHdr(FBuffer)^.MemoSize := SwapIntLE(totsize);
+        PBlockHdr(FBuffer)^.MemoType := $0008FFFF;
+        PBlockHdr(FBuffer)^.MemoSize := totsize;
       end else begin
-        PBlockHdr(FBuffer)^.MemoType := SwapIntLE($01000000);
-        PBlockHdr(FBuffer)^.MemoSize := SwapIntBE(Src.Size);
+        PBlockHdr(FBuffer)^.MemoType := $01000000;
+        PBlockHdr(FBuffer)^.MemoSize := SwapInt(Src.Size);
       end;
     end;
     repeat
@@ -423,31 +423,31 @@ begin
   if FDbfVersion = xBaseIII then
     Result := 512
   else
-    Result := SwapWordLE(PDbtHdr(Header)^.BlockLen);
+    Result := PDbtHdr(Header)^.BlockLen;
 end;
 
 function  TDbaseMemoFile.GetMemoSize: Integer;
 begin
   // dBase4 memofiles contain small 'header'
-  if PInteger(@FBuffer[0])^ = Integer(SwapIntLE($0008FFFF)) then
-    Result := SwapIntLE(PBlockHdr(FBuffer)^.MemoSize)-8
+  if PInteger(@FBuffer[0])^ = $0008FFFF then
+    Result := PBlockHdr(FBuffer)^.MemoSize-8
   else
     Result := -1;
 end;
 
 function  TDbaseMemoFile.GetNextFreeBlock: Integer;
 begin
-  Result := SwapIntLE(PDbtHdr(Header)^.NextBlock);
+  Result := PDbtHdr(Header)^.NextBlock;
 end;
 
 procedure TDbaseMemoFile.SetNextFreeBlock(BlockNo: Integer);
 begin
-  PDbtHdr(Header)^.NextBlock := SwapIntLE(BlockNo);
+  PDbtHdr(Header)^.NextBlock := BlockNo;
 end;
 
 procedure TDbaseMemoFile.SetBlockLen(BlockLen: Integer);
 begin
-  PDbtHdr(Header)^.BlockLen := SwapWordLE(BlockLen);
+  PDbtHdr(Header)^.BlockLen := BlockLen;
 end;
 
 // ------------------------------------------------------------------
@@ -456,27 +456,27 @@ end;
 
 function  TFoxProMemoFile.GetBlockLen: Integer;
 begin
-  Result := SwapWordBE(PFptHdr(Header)^.BlockLen);
+  Result := SwapWord(PFptHdr(Header)^.BlockLen);
 end;
 
 function  TFoxProMemoFile.GetMemoSize: Integer;
 begin
-  Result := SwapIntBE(PBlockHdr(FBuffer)^.MemoSize);
+  Result := SwapInt(PBlockHdr(FBuffer)^.MemoSize);
 end;
 
 function  TFoxProMemoFile.GetNextFreeBlock: Integer;
 begin
-  Result := SwapIntBE(PFptHdr(Header)^.NextBlock);
+  Result := SwapInt(PFptHdr(Header)^.NextBlock);
 end;
 
 procedure TFoxProMemoFile.SetNextFreeBlock(BlockNo: Integer);
 begin
-  PFptHdr(Header)^.NextBlock := SwapIntBE(dword(BlockNo));
+  PFptHdr(Header)^.NextBlock := SwapInt(dword(BlockNo));
 end;
 
 procedure TFoxProMemoFile.SetBlockLen(BlockLen: Integer);
 begin
-  PFptHdr(Header)^.BlockLen := SwapWordBE(dword(BlockLen));
+  PFptHdr(Header)^.BlockLen := SwapWord(dword(BlockLen));
 end;
 
 // ------------------------------------------------------------------

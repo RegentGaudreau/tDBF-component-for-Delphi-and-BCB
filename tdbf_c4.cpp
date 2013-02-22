@@ -8,7 +8,6 @@ USEUNIT("dbf_wtil.pas");
 USEUNIT("dbf.pas");
 USERES("dbf.dcr");
 USEUNIT("dbf_avl.pas");
-USEUNIT("dbf_collate.pas");
 USEUNIT("dbf_common.pas");
 USEUNIT("dbf_cursor.pas");
 USEUNIT("dbf_dbffile.pas");

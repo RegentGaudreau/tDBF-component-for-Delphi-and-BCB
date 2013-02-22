@@ -117,6 +117,7 @@ type
     FParser: TDbfParser;
     FFieldNames: string;
     FValidExpression: Boolean;
+    FKeyTranslation: boolean;
     FOnMasterChange: TNotifyEvent;
     FOnMasterDisable: TNotifyEvent;
 
@@ -134,6 +135,7 @@ type
     destructor Destroy; override;
 
     property FieldNames: string read FFieldNames write SetFieldNames;
+    property KeyTranslation: boolean read FKeyTranslation;
     property ValidExpression: Boolean read FValidExpression write FValidExpression;
     property FieldsVal: PChar read GetFieldsVal;
     property Parser: TDbfParser read FParser;
@@ -221,7 +223,6 @@ type
     function  ParseIndexName(const AIndexName: string): string;
     procedure ParseFilter(const AFilter: string);
     function  GetDbfFieldDefs: TDbfFieldDefs;
-    function  ReadCurrentRecord(Buffer: PChar; var Acceptable: Boolean): TGetResult;
     function  SearchKeyBuffer(Buffer: PChar; SearchType: TSearchKeyType): Boolean;
     procedure SetRangeBuffer(LowRange: PChar; HighRange: PChar);
 
@@ -257,8 +258,7 @@ type
     function  IsCursorOpen: Boolean; override; {virtual abstract}
     procedure SetBookmarkFlag(Buffer: PChar; Value: TBookmarkFlag); override; {virtual abstract}
     procedure SetBookmarkData(Buffer: PChar; Data: Pointer); override; {virtual abstract}
-    procedure SetFieldData(Field: TField; Buffer: Pointer);
-      {$ifdef SUPPORT_OVERLOAD} overload; {$endif} override; {virtual abstract}
+    procedure SetFieldData(Field: TField; Buffer: Pointer); overload; override; {virtual abstract}
 
     { virtual methods (mostly optionnal) }
     function  GetDataSource: TDataSource; {$ifndef VER1_0}override;{$endif}
@@ -288,8 +288,7 @@ type
     destructor Destroy; override;
 
     { abstract methods }
-    function GetFieldData(Field: TField; Buffer: Pointer): Boolean;
-      {$ifdef SUPPORT_OVERLOAD} overload; {$endif} override; {virtual abstract}
+    function GetFieldData(Field: TField; Buffer: Pointer): Boolean; overload; override; {virtual abstract}
     { virtual methods (mostly optionnal) }
     procedure Resync(Mode: TResyncMode); override;
     function CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; override; {virtual}
@@ -299,12 +298,10 @@ type
     procedure Translate(Src, Dest: PChar; ToOem: Boolean); override; {virtual}
 {$endif}
 
-{$ifdef SUPPORT_OVERLOAD}
-    function  GetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean): Boolean;
-      {$ifdef SUPPORT_BACKWARD_FIELDDATA} overload; override; {$else} reintroduce; overload; {$endif}
-    procedure SetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean);
-      {$ifdef SUPPORT_BACKWARD_FIELDDATA} overload; override; {$else} reintroduce; overload; {$endif}
-{$endif}
+    function  GetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean): Boolean; overload;
+      {$ifdef SUPPORT_BACKWARD_FIELDDATA} override; {$endif}
+    procedure SetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean); overload;
+      {$ifdef SUPPORT_BACKWARD_FIELDDATA} override; {$endif}
 
     function CompareBookmarks(Bookmark1, Bookmark2: TBookmark): Integer; override;
     procedure CheckDbfFieldDefs(ADbfFieldDefs: TDbfFieldDefs);
@@ -440,10 +437,6 @@ type
     property AfterCancel;
     property BeforeDelete;
     property AfterDelete;
-{$ifdef SUPPORT_REFRESHEVENTS}    
-    property BeforeRefresh;
-    property AfterRefresh;
-{$endif}    
     property BeforeScroll;
     property AfterScroll;
     property OnCalcFields;
@@ -705,6 +698,11 @@ begin
     Result := @PDbfRecord(Result)^.DeletedFlag;
 end;
 
+function TDbf.GetFieldData(Field: TField; Buffer: Pointer): Boolean; {override virtual abstract from TDataset}
+begin
+  Result := GetFieldData(Field, Buffer, true);
+end;
+
 // we don't want converted data formats, we want native :-)
 // it makes coding easier in TDbfFile.GetFieldData
 //  ftCurrency:
@@ -712,19 +710,7 @@ end;
 //  ftBCD:
 // ftDateTime is more difficult though
 
-function TDbf.GetFieldData(Field: TField; Buffer: Pointer): Boolean; {override virtual abstract from TDataset}
-{$ifdef SUPPORT_OVERLOAD}
-begin
-  { calling through 'old' delphi 3 interface, use compatible/'native' format }
-  Result := GetFieldData(Field, Buffer, true);
-end;
-
 function TDbf.GetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean): Boolean; {overload; override;}
-{$else}
-const
-  { no overload => delphi 3 => use compatible/'native' format }
-  NativeFormat = true;
-{$endif}
 var
   Src: PChar;
 begin
@@ -746,19 +732,7 @@ begin
   end;
 end;
 
-procedure TDbf.SetFieldData(Field: TField; Buffer: Pointer); {override virtual abstract from TDataset}
-{$ifdef SUPPORT_OVERLOAD}
-begin
-  { calling through 'old' delphi 3 interface, use compatible/'native' format }
-  SetFieldData(Field, Buffer, true);
-end;
-
 procedure TDbf.SetFieldData(Field: TField; Buffer: Pointer; NativeFormat: Boolean); {overload; override;}
-{$else}
-const
-  { no overload => delphi 3 => use compatible/'native' format }
-  NativeFormat = true;
-{$endif}
 var
   Dst: PChar;
 begin
@@ -797,29 +771,12 @@ begin
     OnFilterRecord(Self, Acceptable);
 end;
 
-function TDbf.ReadCurrentRecord(Buffer: PChar; var Acceptable: Boolean): TGetResult;
-var
-  lPhysicalRecNo: Integer;
-  pRecord: pDbfRecord;
-begin
-  lPhysicalRecNo := FCursor.PhysicalRecNo;
-  if (lPhysicalRecNo = 0) or not FDbfFile.IsRecordPresent(lPhysicalRecNo) then
-  begin
-    Result := grError;
-    Acceptable := false;
-  end else begin
-    Result := grOK;
-    pRecord := pDbfRecord(Buffer);
-    FDbfFile.ReadRecord(lPhysicalRecNo, @pRecord^.DeletedFlag);
-    Acceptable := (FShowDeleted or (pRecord^.DeletedFlag <> '*'))
-  end;
-end;
-
 function TDbf.GetRecord(Buffer: PChar; GetMode: TGetMode; DoCheck: Boolean): TGetResult; {override virtual abstract from TDataset}
 var
-  pRecord: pDbfRecord;
+  pRecord: pDBFRecord;
   acceptable: Boolean;
   SaveState: TDataSetState;
+  lPhysicalRecNo: Integer;
 //  s: string;
 begin
   if FCursor = nil then
@@ -828,7 +785,7 @@ begin
     exit;
   end;
 
-  pRecord := pDbfRecord(Buffer);
+  pRecord := pDBFRecord(Buffer);
   acceptable := false;
   repeat
     Result := grOK;
@@ -854,7 +811,16 @@ begin
     end;
 
     if (Result = grOK) then
-      Result := ReadCurrentRecord(Buffer, acceptable);
+    begin
+      lPhysicalRecNo := FCursor.PhysicalRecNo;
+      if (lPhysicalRecNo = 0) or not FDbfFile.IsRecordPresent(lPhysicalRecNo) then
+      begin
+        Result := grError;
+      end else begin
+        FDbfFile.ReadRecord(lPhysicalRecNo, @pRecord^.DeletedFlag);
+        acceptable := (FShowDeleted or (pRecord^.DeletedFlag <> '*'))
+      end;
+    end;
 
     if (Result = grOK) and acceptable then
     begin
@@ -1278,8 +1244,6 @@ begin
 // SetIndexName will have made the cursor for us if no index selected :-)
 //  if FCursor = nil then FCursor := TDbfCursor.Create(FDbfFile);
 
-  if FMasterLink.Active and Assigned(FIndexFile) then
-    CheckMasterRange;
   InternalFirst;
 
 //  FDbfFile.SetIndex(FIndexName);
@@ -1578,9 +1542,7 @@ begin
       lPhysFieldDefs.Assign(TDbf(DataSet).DbfFieldDefs);
       IndexDefs.Assign(TDbf(DataSet).IndexDefs);
     end else begin
-{$ifdef SUPPORT_FIELDDEF_TPERSISTENT}
       lPhysFieldDefs.Assign(DataSet.FieldDefs);
-{$endif}      
       IndexDefs.Clear;
     end;
     // convert list of tfields into a list of tdbffielddefs
@@ -1840,7 +1802,6 @@ var
   searchFlag: TSearchKeyType;
   matchRes: Integer;
   lTempBuffer: array [0..100] of Char;
-  acceptable, checkmatch: boolean;
 begin
   if loPartialKey in Options then
     searchFlag := stGreaterEqual
@@ -1849,31 +1810,23 @@ begin
   if TIndexCursor(FCursor).VariantToBuffer(KeyValues, @lTempBuffer[0]) = etString then
     Translate(@lTempBuffer[0], @lTempBuffer[0], true);
   Result := FIndexFile.SearchKey(@lTempBuffer[0], searchFlag);
-  if not Result then
-    exit;
-
-  checkmatch := false;
-  repeat
-    if ReadCurrentRecord(TempBuffer, acceptable) = grError then
-    begin
-      Result := false;
-      exit;
-    end;
-    if acceptable then break;
-    checkmatch := true;
-    FCursor.Next;
-  until false;
-
-  if checkmatch then
+  if Result then
   begin
-    matchRes := TIndexCursor(FCursor).IndexFile.MatchKey(@lTempBuffer[0]);
-    if loPartialKey in Options then
-      Result := matchRes <= 0
-    else
-      Result := matchRes =  0;
+    Result := GetRecord(TempBuffer, gmCurrent, false) = grOK;
+    if not Result then
+    begin
+      Result := GetRecord(TempBuffer, gmNext, false) = grOK;
+      if Result then
+      begin
+        matchRes := TIndexCursor(FCursor).IndexFile.MatchKey(@lTempBuffer[0]);
+        if loPartialKey in Options then
+          Result := matchRes <= 0
+        else
+          Result := matchRes =  0;
+      end;
+    end;
+    FFilterBuffer := TempBuffer;
   end;
-
-  FFilterBuffer := TempBuffer;
 end;
 
 function TDbf.LocateRecord(const KeyFields: String; const KeyValues: Variant;
@@ -2123,6 +2076,11 @@ begin
   pDbfRecord(Buffer)^.BookmarkData := pBookmarkData(Data)^;
 end;
 
+procedure TDbf.SetFieldData(Field: TField; Buffer: Pointer); {override virtual abstract from TDataset}
+begin
+  SetFieldData(Field, Buffer, true);
+end;
+
 // this function counts real number of records: skip deleted records, filter, etc.
 // warning: is very slow, compared to GetRecordCount
 function TDbf.GetExactRecordCount: Integer;
@@ -2225,7 +2183,7 @@ begin
     begin
       FParser := TDbfParser.Create(FDbfFile);
       // we need truncated, translated (to ANSI) strings
-      FParser.StringFieldMode := smAnsiTrim;
+      FParser.RawStringFields := false;
     end;
     // have a parser now?
     if FParser <> nil then
@@ -2820,8 +2778,7 @@ var
   tempBuffer: array[0..300] of char;
 begin
   fieldsVal := FMasterLink.FieldsVal;
-  if (TDbf(FMasterLink.DataSet).DbfFile.UseCodePage <> FDbfFile.UseCodePage)
-        and (FMasterLink.Parser.ResultType = etString) then
+  if FMasterLink.KeyTranslation then
   begin
     FMasterLink.DataSet.Translate(fieldsVal, @tempBuffer[0], false);
     fieldsVal := @tempBuffer[0];
@@ -2830,7 +2787,7 @@ begin
   fieldsVal := TIndexCursor(FCursor).IndexFile.PrepareKey(fieldsVal, FMasterLink.Parser.ResultType);
   SetRangeBuffer(fieldsVal, fieldsVal);
 end;
-
+    
 procedure TDbf.MasterChanged(Sender: TObject);
 begin
   CheckBrowseMode;
@@ -2858,7 +2815,7 @@ begin
     DatabaseError(SCircularDataLink);
 {$endif}
   end;
-{$endif}
+{$endif}  
   FMasterLink.DataSource := Value;
 end;
 
@@ -2973,6 +2930,8 @@ begin
     FValidExpression := false;
     FParser.DbfFile := (DataSet as TDbf).DbfFile;
     FParser.ParseExpression(FFieldNames);
+    FKeyTranslation := TDbfFile(FParser.DbfFile).UseCodePage <> 
+      FDetailDataSet.DbfFile.UseCodePage;
     FValidExpression := true;
   end else begin
     FParser.ClearExpressions;

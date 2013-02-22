@@ -199,7 +199,7 @@ uses
 {$ifdef SUPPORT_MATH_UNIT}
   Math,
 {$endif}
-  dbf_str, dbf_lang, dbf_prssupp, dbf_prsdef;
+  dbf_str, dbf_lang;
 
 const
   sDBF_DEC_SEP = '.';
@@ -662,7 +662,8 @@ begin
         lFieldDescVII.FieldType := lFieldDef.NativeFieldType;
         lFieldDescVII.FieldSize := lSize;
         lFieldDescVII.FieldPrecision := lPrec;
-        lFieldDescVII.NextAutoInc := SwapIntLE(lFieldDef.AutoInc);
+        // TODO: bug-endianness
+        lFieldDescVII.NextAutoInc := lFieldDef.AutoInc;
         //lFieldDescVII.MDXFlag := ???
       end else begin
         FillChar(lFieldDescIII, SizeOf(lFieldDescIII), #0);
@@ -670,8 +671,9 @@ begin
         lFieldDescIII.FieldType := lFieldDef.NativeFieldType;
         lFieldDescIII.FieldSize := lSize;
         lFieldDescIII.FieldPrecision := lPrec;
+        // TODO: bug-endianness
         if FDbfVersion = xFoxPro then
-          lFieldDescIII.FieldOffset := SwapIntLE(lFieldOffset);
+          lFieldDescIII.FieldOffset := lFieldOffset;
         if (PDbfHdr(Header)^.VerDBF = $02) and (lFieldDef.NativeFieldType in ['0', 'Y', 'T', 'O', '+']) then
           PDbfHdr(Header)^.VerDBF := $30;
         if (PDbfHdr(Header)^.VerDBF = $30) and (lFieldDef.NativeFieldType = '+') then
@@ -845,7 +847,8 @@ begin
         lSize := lFieldDescVII.FieldSize;
         lPrec := lFieldDescVII.FieldPrecision;
         lNativeFieldType := lFieldDescVII.FieldType;
-        lAutoInc := SwapIntLE(lFieldDescVII.NextAutoInc);
+        // TODO: big-endianness
+        lAutoInc := lFieldDescVII.NextAutoInc;
         if lNativeFieldType = '+' then
           FAutoIncPresent := true;
       end else begin
@@ -1493,23 +1496,23 @@ begin
           Result := PDWord(Src)^ <> 0;
           if Result and (Dst <> nil) then
           begin
-            PDWord(Dst)^ := SwapIntBE(PDWord(Src)^);
+            PDWord(Dst)^ := SwapInt(PDWord(Src)^);
             if Result then
               PInteger(Dst)^ := Integer(PDWord(Dst)^ xor $80000000);
           end;
         end else begin
           Result := true;
           if Dst <> nil then
-            PInteger(Dst)^ := SwapIntLE(PInteger(Src)^);
+            PInteger(Dst)^ := PInteger(Src)^;
         end;
       end;
     'O':
       begin
 {$ifdef SUPPORT_INT64}
-        Result := PInt64(Src)^ <> 0;
+        Result := (PInt64(Src)^ <> 0);
         if Result and (Dst <> nil) then
         begin
-          SwapInt64BE(Src, Dst);
+          SwapInt64(Src, Dst);
           if PInt64(Dst)^ > 0 then
             PInt64(Dst)^ := not PInt64(Dst)^
           else
@@ -1522,7 +1525,7 @@ begin
         Result := (PInteger(Src)^ <> 0) and (PInteger(PChar(Src)+4)^ <> 0);
         if Result and (Dst <> nil) then
         begin
-          SwapInt64BE(Src, Dst);
+          SwapInt64(Src, Dst);
           if FDateTimeHandling = dtBDETimeStamp then
             date := BDETimeStampToDateTime(PDouble(Dst)^)
           else
@@ -1533,15 +1536,11 @@ begin
     'T':
       begin
         // all binary zeroes -> empty datetime
-{$ifdef SUPPORT_INT64}        
-        Result := PInt64(Src)^ <> 0;
-{$else}        
         Result := (PInteger(Src)^ <> 0) or (PInteger(PChar(Src)+4)^ <> 0);
-{$endif}        
         if Result and (Dst <> nil) then
         begin
-          timeStamp.Date := SwapIntLE(PInteger(Src)^) - JulianDateDelta;
-          timeStamp.Time := SwapIntLE(PInteger(PChar(Src)+4)^);
+          timeStamp.Date := PInteger(Src)^ - JulianDateDelta;
+          timeStamp.Time := PInteger(PChar(Src)+4)^;
           date := TimeStampToDateTime(timeStamp);
           SaveDateToDst;
         end;
@@ -1552,9 +1551,17 @@ begin
         Result := true;
         if Dst <> nil then
         begin
-          PInt64(Dst)^ := SwapIntLE(PInt64(Src)^);
-          if DataType = ftCurrency then
-            PDouble(Dst)^ := PInt64(Dst)^ / 10000.0;
+          // TODO: data is little endian;
+          case DataType of
+            ftCurrency:
+            begin
+              PDouble(Dst)^ := PInt64(Src)^ / 10000.0;
+            end;
+            ftBCD:
+            begin
+              PCurrency(Dst)^ := PCurrency(Src)^;
+            end;
+          end;
         end;
 {$endif}
       end;
@@ -1564,7 +1571,7 @@ begin
         begin
           Result := true;
           if Dst <> nil then
-            PInt64(Dst)^ := SwapIntLE(PInt64(Src)^);
+            PDouble(Dst)^ := PDouble(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1574,7 +1581,7 @@ begin
         begin
           Result := PInteger(Src)^ <> 0;
           if Dst <> nil then
-            PInteger(Dst)^ := SwapIntLE(PInteger(Src)^);
+            PInteger(Dst)^ := PInteger(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1746,12 +1753,12 @@ begin
             IntValue := 0
           else
             IntValue := PDWord(Src)^ xor $80000000;
-          PDWord(Dst)^ := SwapIntBE(IntValue);
+          PDWord(Dst)^ := SwapInt(IntValue);
         end else begin
           if Src = nil then
             PDWord(Dst)^ := 0
           else
-            PDWord(Dst)^ := SwapIntLE(PDWord(Src)^);
+            PDWord(Dst)^ := PDWord(Src)^;
         end;
       end;
     'O':
@@ -1762,10 +1769,10 @@ begin
           PInt64(Dst)^ := 0;
         end else begin
           if PDouble(Src)^ < 0 then
-            PInt64(Dst)^ := not PInt64(Src)^
+            PLargeInt(Dst)^ := not PLargeInt(Src)^
           else
             PDouble(Dst)^ := (PDouble(Src)^) * -1;
-          SwapInt64BE(Dst, Dst);
+          SwapInt64(Dst, Dst);
         end;
 {$endif}
       end;
@@ -1773,17 +1780,13 @@ begin
       begin
         if Src = nil then
         begin
-{$ifdef SUPPORT_INT64}
-          PInt64(Dst)^ := 0;
-{$else}          
           PInteger(Dst)^ := 0;
           PInteger(PChar(Dst)+4)^ := 0;
-{$endif}
         end else begin
           LoadDateFromSrc;
           if FDateTimeHandling = dtBDETimeStamp then
             date := DateTimeToBDETimeStamp(date);
-          SwapInt64BE(@date, Dst);
+          SwapInt64(@date, Dst);
         end;
       end;
     'T':
@@ -1791,17 +1794,13 @@ begin
         // all binary zeroes -> empty datetime
         if Src = nil then
         begin
-{$ifdef SUPPORT_INT64}
-          PInt64(Dst)^ := 0;
-{$else}          
           PInteger(Dst)^ := 0;
           PInteger(PChar(Dst)+4)^ := 0;
-{$endif}          
         end else begin
           LoadDateFromSrc;
           timeStamp := DateTimeToTimeStamp(date);
-          PInteger(Dst)^ := SwapIntLE(timeStamp.Date + JulianDateDelta);
-          PInteger(PChar(Dst)+4)^ := SwapIntLE(timeStamp.Time);
+          PInteger(Dst)^ := timeStamp.Date + JulianDateDelta;
+          PInteger(PChar(Dst)+4)^ := timeStamp.Time;
         end;
       end;
     'Y':
@@ -1809,7 +1808,7 @@ begin
 {$ifdef SUPPORT_INT64}
         if Src = nil then
         begin
-          PInt64(Dst)^ := 0;
+          PInt64(Dst)^ := 0
         end else begin
           case DataType of
             ftCurrency:
@@ -1817,8 +1816,8 @@ begin
             ftBCD:
               PCurrency(Dst)^ := PCurrency(Src)^;
           end;
-          SwapInt64LE(Dst, Dst);
         end;
+        // TODO: data is little endian
 {$endif}
       end;
     'B':
@@ -1828,7 +1827,7 @@ begin
           if Src = nil then
             PDouble(Dst)^ := 0
           else
-            SwapInt64LE(Src, Dst);
+            PDouble(Dst)^ := PDouble(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1839,7 +1838,7 @@ begin
           if Src = nil then
             PInteger(Dst)^ := 0
           else
-            PInteger(Dst)^ := SwapIntLE(PInteger(Src)^);
+            PInteger(Dst)^ := PInteger(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1970,19 +1969,18 @@ begin
         // read current auto inc, from header or field, depending on sharing
         lAutoIncOffset := sizeof(rDbfHdr) + sizeof(rAfterHdrVII) + 
           FieldDescVII_AutoIncOffset + I * sizeof(rFieldDescVII);
+        // TODO: big-endianness
         if NeedLocks then
-        begin
-          ReadBlock(@NextVal, 4, lAutoIncOffset);
-          NextVal := SwapIntLE(NextVal);
-        end else
+          ReadBlock(@NextVal, 4, lAutoIncOffset)
+        else
           NextVal := TempFieldDef.AutoInc;
         // store to buffer, positive = high bit on, so flip it
-        PCardinal(DestBuf+TempFieldDef.Offset)^ := SwapIntBE(NextVal or $80000000);
+        PCardinal(DestBuf+TempFieldDef.Offset)^ := SwapInt(NextVal or $80000000);
         // increase
         Inc(NextVal);
         TempFieldDef.AutoInc := NextVal;
         // write new value to header buffer
-        PCardinal(FHeader+lAutoIncOffset)^ := SwapIntLE(NextVal);
+        PCardinal(FHeader+lAutoIncOffset)^ := NextVal;
       end;
     end;
 
@@ -2359,22 +2357,27 @@ begin
 end;
 
 function TDbfFile.Insert(Buffer: PChar): integer;
-type
-  TErrorContext = (ecNone, ecInsert, ecWriteIndex, ecWriteDbf);
 var
   newRecord: Integer;
   lIndex: TIndexFile;
+  error: Boolean;
 
-  procedure RollBackIndexesAndRaise(Count: Integer; ErrorContext: TErrorContext);
+  procedure RollBackIndexesAndRaise(HighIndex: Integer; IndexError: Boolean);
   var
     errorMsg: string;
     I: Integer;
   begin
     // rollback committed indexes
-    for I := 0 to Count-1 do
+    error := IndexError;
+    for I := 0 to HighIndex do
     begin
       lIndex := TIndexFile(FIndexFiles.Items[I]);
       lIndex.Delete(newRecord, Buffer);
+      if lIndex.WriteError then
+      begin
+        lIndex.ResetError;
+        error := true;
+      end;
     end;
 
     // reset any dbf file error
@@ -2382,17 +2385,15 @@ var
 
     // if part of indexes committed -> always index error msg
     // if error while rolling back index -> index error msg
-    case ErrorContext of
-      ecInsert: begin TIndexFile(FIndexFiles.Items[Count]).InsertError; exit; end;
-      ecWriteIndex: errorMsg := STRING_WRITE_INDEX_ERROR;
-      ecWriteDbf: errorMsg := STRING_WRITE_ERROR;
-    end;
+    if error then
+      errorMsg := STRING_WRITE_INDEX_ERROR
+    else
+      errorMsg := STRING_WRITE_ERROR;
     raise EDbfWriteError.Create(errorMsg);
   end;
 
 var
   I: Integer;
-  error: TErrorContext;
 begin
   // get new record index
   Result := 0;
@@ -2402,24 +2403,34 @@ begin
     Inc(newRecord);
   // write autoinc value
   ApplyAutoIncToBuffer(Buffer);
-  error := ecNone;
-  I := 0;
-  while I < FIndexFiles.Count do
+  // check indexes -> possible key violation
+  I := 0; error := false;
+  while (I < FIndexFiles.Count) and not error do
   begin
     lIndex := TIndexFile(FIndexFiles.Items[I]);
-    if not lIndex.Insert(newRecord, Buffer) then
-      error := ecInsert;
+    error := lIndex.CheckKeyViolation(Buffer);
+    Inc(I);
+  end;
+  // error occured while inserting? -> abort
+  if error then
+  begin
+    UnlockPage(newRecord);
+    lIndex.InsertError;
+    // don't have to exit -- unreachable code
+  end;
+
+  // no key violation, insert record into index(es)
+  for I := 0 to FIndexFiles.Count-1 do
+  begin
+    lIndex := TIndexFile(FIndexFiles.Items[I]);
+    lIndex.Insert(newRecord, Buffer);
     if lIndex.WriteError then
-      error := ecWriteIndex;
-    if error <> ecNone then
     begin
       // if there's an index write error, I shouldn't
       // try to write the dbf header and the new record,
       // but raise an exception right away
-      UnlockPage(newRecord);
-      RollBackIndexesAndRaise(I, ecWriteIndex);
+      RollBackIndexesAndRaise(I, True);
     end;
-    Inc(I);
   end;
 
   // indexes ok -> continue inserting
@@ -2442,8 +2453,7 @@ begin
     // At this point I should "roll back"
     // the already written index records.
     // if this fails, I'm in deep trouble!
-    UnlockPage(newRecord);
-    RollbackIndexesAndRaise(FIndexFiles.Count, ecWriteDbf);
+    RollbackIndexesAndRaise(FIndexFiles.Count-1, False);
   end;
 
   // write locking info
@@ -2467,7 +2477,7 @@ begin
     WriteHeader;
     UnlockPage(0);
     // roll back indexes too
-    RollbackIndexesAndRaise(FIndexFiles.Count, ecWriteDbf);
+    RollbackIndexesAndRaise(FIndexFiles.Count-1, False);
   end else
     Result := newRecord;
 end;
@@ -2521,26 +2531,13 @@ end;
 procedure TDbfFile.UnlockRecord(RecNo: Integer; Buffer: PChar);
 var
   I: Integer;
-  lIndex, lErrorIndex: TIndexFile;
+  lIndex: TIndexFile;
 begin
   // update indexes, possible key violation
-  I := 0;
-  while I < FIndexFiles.Count do
+  for I := 0 to FIndexFiles.Count - 1 do
   begin
     lIndex := TIndexFile(FIndexFiles.Items[I]);
-    if not lIndex.Update(RecNo, FPrevBuffer, Buffer) then
-    begin
-      // error -> rollback
-      lErrorIndex := lIndex;
-      while I > 0 do
-      begin
-        Dec(I);
-        lIndex := TIndexFile(FIndexFiles.Items[I]);
-        lIndex.Update(RecNo, Buffer, FPrevBuffer);
-      end;
-      lErrorIndex.InsertError;
-    end;
-    Inc(I);
+    lIndex.Update(RecNo, FPrevBuffer, Buffer);
   end;
   // write new record buffer, all keys ok
   WriteRecord(RecNo, Buffer);
@@ -2564,24 +2561,13 @@ end;
 procedure TDbfFile.RecordRecalled(RecNo: Integer; Buffer: PChar);
 var
   I: Integer;
-  lIndex, lErrorIndex: TIndexFile;
+  lIndex: TIndexFile;
 begin
   // notify indexes: record recalled
-  I := 0;
-  while I < FIndexFiles.Count do
+  for I := 0 to FIndexFiles.Count - 1 do
   begin
     lIndex := TIndexFile(FIndexFiles.Items[I]);
-    if not lIndex.RecordRecalled(RecNo, Buffer) then
-    begin
-      lErrorIndex := lIndex;
-      while I > 0 do
-      begin
-        Dec(I);
-        lIndex.RecordDeleted(RecNo, Buffer);
-      end;
-      lErrorIndex.InsertError;
-    end;
-    Inc(I);
+    lIndex.RecordRecalled(RecNo, Buffer);
   end;
 end;
 

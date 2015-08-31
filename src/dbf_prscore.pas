@@ -260,7 +260,6 @@ procedure Func_OR(Param: PExpressionRec);
 procedure Func_NOT(Param: PExpressionRec);
 
 procedure FuncAdd_S(Param: PExpressionRec);
-procedure FuncRecNo(Param: PExpressionRec);
 procedure FuncSub_S(Param: PExpressionRec);
 
 var
@@ -2591,11 +2590,6 @@ begin
   Param^.Res.Append(Param^.Args[0], Len);
 end;
 
-procedure FuncRecNo(Param: PExpressionRec);
-begin
-  PInteger(Param^.Res.MemoryPos^)^ := -1;
-end;
-
 procedure FuncRight(Param: PExpressionRec);
 var
   srcLen, index, count: Integer;
@@ -2903,7 +2897,6 @@ initialization
     Add(TFunction.Create('LTRIM',     '',      'S',   1, etString,   FuncLTrim,      ''));
     Add(TFunction.Create('MONTH',     '',      'D',   1, etInteger,  FuncMonth,      ''));
     Add(TFunction.Create('PROPER',    '',      'S',   1, etString,   FuncProper,     ''));
-    Add(TVaryingFunction.Create('RECNO', '', '',      0, etInteger,  FuncRecNo,      ''));
     Add(TFunction.Create('RIGHT',     '',      'SI',  2, etString,   FuncRight,      ''));
     Add(TFunction.Create('ROUND',     '',      'FI',  2, etFloat,    FuncRound_F_FI, ''));
     Add(TFunction.Create('ROUND',     '',      'FF',  2, etFloat,    FuncRound_F_FF, ''));

@@ -360,12 +360,10 @@ begin
       ExprTree := MakeTree(ExpColl, 0, ExpColl.Count - 1);
       FCurrentRec := nil;
       CheckArguments(ExprTree);
-//    LinkVariables(ExprTree);
+      LinkVariables(ExprTree);
       if Optimize then
-//      RemoveConstants(ExprTree);
         OptimizeExpr(ExprTree);
       // all constant expressions are evaluated and replaced by variables
-      LinkVariables(ExprTree);
       FCurrentRec := nil;
       FExpResultPos := FExpResult;
       MakeLinkedList(ExprTree, @FExpResult, @FExpResultPos, @FExpResultSize);
@@ -1291,6 +1289,7 @@ begin
   Result^.ExprWord := nil;
   Result^.ResetDest := false;
   Result^.ExpressionContext := @FExpressionContext;
+  Result^.IsNullPtr := nil;
 end;
 
 procedure TCustomExpressionParser.Evaluate(AnExpression: string);

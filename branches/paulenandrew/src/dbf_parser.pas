@@ -81,6 +81,11 @@ uses
   dbf_dbffile,
   dbf_str;
 
+procedure FuncRecNo(Param: PExpressionRec);
+begin
+  PInteger(Param^.Res.MemoryPos^)^ := -1;
+end;
+
 type
 // TFieldVar aids in retrieving field values from records
 // in their proper type
@@ -515,6 +520,7 @@ begin
       FWordsList.AddList(DbfWordsSensNoPartialList, 0, DbfWordsSensNoPartialList.Count - 1);
     end;
   end;
+  FWordsList.Add(TVaryingFunction.Create('RECNO', '', '', 0, etInteger, FuncRecNo, ''));
   if Length(lExpression) > 0 then
     ParseExpression(lExpression);
 end;

@@ -253,44 +253,88 @@
   {$define DELPHI_3}
 {$endif}
 
-{$ifdef VER260} // Delphi XE5 (not tested)
- {$define DELPHI_XE5}
- {$define DELPHI_XE4}
- {$define DELPHI_XE3}
- {$define DELPHI_XE2}
- {$define DELPHI_XE}
- {$define DELPHI_2010}
- {$define DELPHI_2009}
- {$define DELPHI_2007}
- {$define DELPHI_2006}
- {$define DELPHI_2005}
- {$define DELPHI_8}
- {$define DELPHI_7}
- {$define DELPHI_6}
- {$define DELPHI_5}
- {$define DELPHI_4}
- {$define DELPHI_3}
- {$endif}
- 
-{$ifdef VER270} // Delphi XE6 (not tested)
- {$define DELPHI_XE6}
- {$define DELPHI_XE5}
- {$define DELPHI_XE4}
- {$define DELPHI_XE3}
- {$define DELPHI_XE2}
- {$define DELPHI_XE}
- {$define DELPHI_2010}
- {$define DELPHI_2009}
- {$define DELPHI_2007}
- {$define DELPHI_2006}
- {$define DELPHI_2005}
- {$define DELPHI_8}
- {$define DELPHI_7}
- {$define DELPHI_6}
- {$define DELPHI_5}
- {$define DELPHI_4}
- {$define DELPHI_3}
- {$endif}
+{$ifdef VER260} // Delphi XE5
+  {$define DELPHI_XE5}
+  {$define DELPHI_XE4}
+  {$define DELPHI_XE3}
+  {$define DELPHI_XE2}
+  {$define DELPHI_XE}
+  {$define DELPHI_2010}
+  {$define DELPHI_2009}
+  {$define DELPHI_2007}
+  {$define DELPHI_2006}
+  {$define DELPHI_2005}
+  {$define DELPHI_8}
+  {$define DELPHI_7}
+  {$define DELPHI_6}
+  {$define DELPHI_5}
+  {$define DELPHI_4}
+  {$define DELPHI_3}
+{$endif}
+
+{$ifdef VER270} // Delphi XE6
+  {$define DELPHI_XE6}
+  {$define DELPHI_XE5}
+  {$define DELPHI_XE4}
+  {$define DELPHI_XE3}
+  {$define DELPHI_XE2}
+  {$define DELPHI_XE}
+  {$define DELPHI_2010}
+  {$define DELPHI_2009}
+  {$define DELPHI_2007}
+  {$define DELPHI_2006}
+  {$define DELPHI_2005}
+  {$define DELPHI_8}
+  {$define DELPHI_7}
+  {$define DELPHI_6}
+  {$define DELPHI_5}
+  {$define DELPHI_4}
+  {$define DELPHI_3}
+{$endif}
+
+{$ifdef VER280} // Delphi XE7
+  {$define DELPHI_XE7}
+  {$define DELPHI_XE6}
+  {$define DELPHI_XE5}
+  {$define DELPHI_XE4}
+  {$define DELPHI_XE3}
+  {$define DELPHI_XE2}
+  {$define DELPHI_XE}
+  {$define DELPHI_2010}
+  {$define DELPHI_2009}
+  {$define DELPHI_2007}
+  {$define DELPHI_2006}
+  {$define DELPHI_2005}
+  {$define DELPHI_8}
+  {$define DELPHI_7}
+  {$define DELPHI_6}
+  {$define DELPHI_5}
+  {$define DELPHI_4}
+  {$define DELPHI_3}
+{$endif}
+
+{$ifdef VER290} // Delphi XE8
+  {$define DELPHI_XE8}
+  {$define DELPHI_XE7}
+  {$define DELPHI_XE6}
+  {$define DELPHI_XE5}
+  {$define DELPHI_XE4}
+  {$define DELPHI_XE3}
+  {$define DELPHI_XE2}
+  {$define DELPHI_XE}
+  {$define DELPHI_2010}
+  {$define DELPHI_2009}
+  {$define DELPHI_2007}
+  {$define DELPHI_2006}
+  {$define DELPHI_2005}
+  {$define DELPHI_8}
+  {$define DELPHI_7}
+  {$define DELPHI_6}
+  {$define DELPHI_5}
+  {$define DELPHI_4}
+  {$define DELPHI_3}
+{$endif}
+
 
 //-------------------------------------------------------
 //--- Conclude supported features from delphi version ---
@@ -359,6 +403,10 @@
   {$define SUPPORT_MAXLISTSIZEDEPRECATED}
 {$endif}
 
+{$ifdef Delphi_2010}
+  {$define SUPPORT_ROUNDTO} // RoundTo was included with 2010 it seems
+{$endif}
+
 {$ifdef Delphi_XE}
   {$define SUPPORT_FORMATSETTINGS}
   {$define SUPPORT_FORMATSETTINGS_CREATE}
@@ -403,6 +451,7 @@
   {$define SUPPORT_MATH_UNIT}
   {$define SUPPORT_VARIANTS}
   {$define SUPPORT_SEPARATE_VARIANTS_UNIT}
+  {$define SUPPORT_ROUNDTO}
 
   // FPC 2.0.x improvements
   {$ifdef VER2}
@@ -430,8 +479,8 @@
 {$ifndef WINDOWS}
 
     {$define SUPPORT_PATHDELIM}
-    {$define SUPPORT_INCLUDETRAILPATHDELIM}
-    {$define SUPPORT_INCLUDETRAILBACKSLASH}
+    {$define SUPPORT_INCLTRAILPATHDELIM} // Was incorrect SUPPORT_INCLUDETRAILPATHDELIM
+    {$define SUPPORT_INCLTRAILBACKSLASH} // Was incorrect SUPPORT_INCLUDETRAILBACKSLASH
 
 {$endif}
 

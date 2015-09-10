@@ -88,7 +88,7 @@ type
 
   TExprCollection = class(TNoOwnerCollection)
   public
-    procedure Check;
+    procedure Check(ExceptionClass: TExceptionClass);
     procedure EraseExtraBrackets;
   end;
 
@@ -246,6 +246,15 @@ type
     function AsPointer: PAnsiChar; override; // Was PChar
 
     property Value: Boolean read FValue write FValue;
+  end;
+
+  TDateTimeConstant = class(TConstant)
+  private
+    FValue: TDateTime;
+  public
+    constructor Create(AName: string; AValue: TDateTime);
+    function AsPointer: PAnsiChar; override;
+    property Value: TDateTime read FValue write FValue;
   end;
 
   TVariableFieldInfo = record
@@ -700,14 +709,17 @@ begin
   // Isn't there an Unquote function for doing this, anyway?
   // --- 2014-07-13 twm
   Len := Length(AValue);
-  firstChar := AValue[1];
-  lastChar := AValue[Len];
-  if (firstChar = lastChar) and ((firstChar = '''') or (firstChar = '"')) then begin
-    s := Copy(AValue, 2, Len - 2);
-    s := StringReplace(s, firstChar + firstChar, firstChar, [rfReplaceAll, rfIgnoreCase]);
-    FValue := AnsiString(s);
-  end else
-    FValue := AnsiString(AValue); // AnsiString cast added
+  if Len <> 0 then
+  begin
+    firstChar := AValue[1];
+    lastChar := AValue[Len];
+    if (firstChar = lastChar) and ((firstChar = '''') or (firstChar = '"')) then begin
+      s := Copy(AValue, 2, Len - 2);
+      s := StringReplace(s, firstChar + firstChar, firstChar, [rfReplaceAll, rfIgnoreCase]);
+      FValue := AnsiString(s);
+    end else
+      FValue := AnsiString(AValue); // AnsiString cast added
+  end;
 end;
 
 function TStringConstant.AsPointer: PAnsiChar; // Was PChar
@@ -758,6 +770,20 @@ begin
   Result := PAnsiChar(@FValue);
 end;
 {$endif}
+
+{ TDateTimeConstant }
+
+constructor TDateTimeConstant.Create(AName: string; AValue: TDateTime);
+begin
+  inherited Create(AName, etDateTime, _DateTimeVariable);
+
+  FValue := AValue;
+end;
+
+function TDateTimeConstant.AsPointer: PAnsiChar;
+begin
+  Result := PAnsiChar(@FValue);
+end;
 
 { TVariable }
 
@@ -991,7 +1017,7 @@ end;
 
 { TExprCollection }
 
-procedure TExprCollection.Check;
+procedure TExprCollection.Check(ExceptionClass: TExceptionClass);
 var
   brCount, I: Integer;
 begin
@@ -1004,7 +1030,7 @@ begin
     end;
   end;
   if brCount <> 0 then
-    raise EParserException.Create('Unequal brackets');
+    raise ExceptionClass.Create('Unequal brackets');
 end;
 
 procedure TExprCollection.EraseExtraBrackets;

@@ -88,6 +88,7 @@ type
 
     function IsIndex: Boolean; override;
     procedure ValidateExpression(AExpression: string); override;
+    function ExceptionClass: TExceptionClass; override;
   public
     constructor Create(ADbfFile: Pointer); override;
     property ResultLen: Integer read FResultLen;
@@ -1462,7 +1463,7 @@ end;
 function TMdxPage.GetEntry(AEntryNo: Integer): Pointer;
 begin
   // get base + offset
-  Result := PChar(@PMdxPage(PageBuffer)^.FirstEntry)
+  Result := PAnsiChar(@PMdxPage(PageBuffer)^.FirstEntry)
     + (SwapWordLE(PIndexHdr(IndexFile.IndexHeader)^.KeyRecLen) * AEntryNo);
 end;
 
@@ -1808,7 +1809,12 @@ begin
 
   // check if expression not too long
   if FResultLen > MaxIndexKeyLen then
-    raise EDbfError.CreateFmt(STRING_INDEX_EXPRESSION_TOO_LONG, [AExpression, FResultLen]);
+    raise ExceptionClass.CreateFmt(STRING_INDEX_EXPRESSION_TOO_LONG, [AExpression, FResultLen]);
+end;
+
+function TDbfIndexParser.ExceptionClass: TExceptionClass;
+begin
+  Result := EDbfErrorInvalidIndex;
 end;
 
 function TDbfIndexParser.GetKeyType: Char;
@@ -1820,7 +1826,7 @@ begin
     etInteger, etLargeInt, etFloat: Result := 'N';
     etDateTime: Result := 'D';
   else
-    raise EParserException.Create(STRING_INVALID_INDEX_TYPE);
+    raise EDbfError.Create(STRING_INVALID_INDEX_TYPE);
   end;
   lDbfFieldDef:= DbfFieldDef;
   if Assigned(lDbfFieldDef) then
@@ -2484,7 +2490,16 @@ begin
       while FLeaves[I].LowerPage <> nil do
         FLeaves[I] := FLeaves[I].LowerPage;
       // parse expression
-      FParsers[I].ParseExpression(String(PIndexHdr(FIndexHeader)^.KeyDesc));
+      try
+        FParsers[I].ParseExpression(PIndexHdr(FIndexHeader)^.KeyDesc);
+      except
+        {$IFDEF TDBF_IGNORE_INVALID_INDICES}
+        on E: EDbfErrorInvalidIndex do
+          // ignore invalid indexes so we can load tables with broken index files
+        else
+        {$ENDIF}
+          raise;
+      end;
     end;
   end else begin
     // clear root
@@ -3355,9 +3370,9 @@ begin
       // convert string to BCD
       I := 0;
       while I < NumDecimals do
-      begin
+      begin             
         // only one byte left?
-        if FloatRec.Digits[I+1] = ZERO_CHAR then
+        if I+1>=NumDecimals then
           BCDdigit := 0
         else
           BCDdigit := Byte(FloatRec.Digits[I+1]) - Byte('0');
@@ -3960,14 +3975,18 @@ end;
 procedure TIndexFile.First;
 begin
   // resync tree
-  Resync(false);
+  {$ifndef TDBF_INDEX_NO_RESYNC}
+  Resync(false);  
+  {$endif}
   WalkFirst;
 end;
 
 procedure TIndexFile.Last;
 begin
   // resync tree
-  Resync(false);
+  {$ifndef TDBF_INDEX_NO_RESYNC}
+  Resync(false);  
+  {$endif}
   WalkLast;
 end;
 
@@ -4108,14 +4127,18 @@ end;
 function TIndexFile.Prev: Boolean;
 begin
   // resync in-mem tree with tree on disk
+  {$ifndef TDBF_INDEX_NO_RESYNC}
   Resync(true);
+  {$endif}
   Result := WalkPrev;
 end;
 
 function TIndexFile.Next: Boolean;
 begin
   // resync in-mem tree with tree on disk
-  Resync(true);
+  {$ifndef TDBF_INDEX_NO_RESYNC}
+  Resync(true);     
+  {$endif}
   Result := WalkNext;
 end;
 

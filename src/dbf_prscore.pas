@@ -80,6 +80,9 @@ type
     function GetResultType: TExpressionType; virtual;
     function IsIndex: Boolean; virtual;
     procedure OptimizeExpr(var ExprRec: PExpressionRec); virtual;
+    function ExceptionClass: TExceptionClass; virtual;
+    procedure ReadWord(const AnExpr: string; var isConstant: Boolean; var I1, I2: Integer; Len: Integer); virtual;
+    function CreateConstant(W: string): TConstant; virtual;
 
     property CurrentRec: PExpressionRec read FCurrentRec write FCurrentRec;
     property LastRec: PExpressionRec read FLastRec write FLastRec;
@@ -472,10 +475,10 @@ begin
 
   // fatal error?
   case error of
-    1: raise EParserException.Create('Function or operand has too few arguments');
-    2: raise EParserException.Create('Argument type mismatch');
-    3: raise EParserException.Create('Function or operand has too many arguments');
-    4: raise EParserException.Create('No function with this name, remove brackets for variable');
+    1: raise ExceptionClass.Create('Function or operand has too few arguments');
+    2: raise ExceptionClass.Create('Argument type mismatch');
+    3: raise ExceptionClass.Create('Function or operand has too many arguments');
+    4: raise ExceptionClass.Create('No function with this name, remove brackets for variable');
   end;
 end;
 
@@ -528,6 +531,7 @@ begin
             etLargeInt:ExprWord := TLargeIntConstant.Create(PInt64(FExpResult)^);
 {$endif}
             etString: ExprWord := TStringConstant.Create(string(FExpResult)); // Added string cast
+            etDateTime: ExprWord := TDateTimeConstant.Create(EmptyStr, PDateTime(FExpResult)^);
           end;
 
           // fill in structure
@@ -670,6 +674,16 @@ var
   I, IArg, IStart, IEnd, lPrec, brCount: Integer;
   ExprWord: TExprWord;
 begin
+  // detect empty brackets
+  I := FirstItem;
+  while I < LastItem do
+  begin
+    if (TExprWord(Expr.Items[I]).ResultType = etLeftBracket) and (TExprWord(Expr.Items[I + 1]).ResultType = etRightBracket) then
+      if not((I > 0) and TExprWord(Expr.Items[I - 1]).IsFunction) then
+        raise ExceptionClass.Create('Empty parentheses');
+    Inc(I);
+  end;
+
   // remove redundant brackets
   brCount := 0;
   while (FirstItem+brCount < LastItem) and (TExprWord(
@@ -722,8 +736,11 @@ begin
   if LastItem = FirstItem then
   begin
     Result^.ExprWord := TExprWord(Expr.Items[FirstItem]);
-    Result^.Oper := Result^.ExprWord.ExprFunc;
-    exit;
+    if Result^.ExprWord.ResultType <> etComma then
+    begin
+      Result^.Oper := Result^.ExprWord.ExprFunc;
+      exit;
+    end;
   end;
 
   // no...more complex, find operator with lowest precedence
@@ -798,201 +815,35 @@ begin
       Result^.ArgList[IArg] := MakeTree(Expr, IStart, IEnd-1);
     end;
   end else
-    raise EParserException.Create('Operator/function missing');
+    raise ExceptionClass.Create('Operator/function missing');
 end;
 
 procedure TCustomExpressionParser.ParseString(AnExpression: string; DestCollection: TExprCollection);
 var
   isConstant: Boolean;
-  I, I1, I2, Len, DecSep: Integer;
+  I, I1, I2, Len: Integer;
   W, S: string;
   TempWord: TExprWord;
-
-  procedure ReadConstant(AnExpr: string; isHex: Boolean);
-  begin
-    isConstant := true;
-
-    while (I2 <= Len) and (CharInSet(AnExpr[I2], ['0'..'9']) or
-      (isHex and CharInSet(AnExpr[I2], ['a'..'f', 'A'..'F']))) do
-      Inc(I2);
-    if I2 <= Len then
-    begin
-      if AnExpr[I2] = FDecimalSeparator then
-      begin
-        Inc(I2);
-        while (I2 <= Len) and CharInSet(AnExpr[I2], ['0'..'9']) do
-          Inc(I2);
-      end;
-      if (I2 <= Len) and (AnExpr[I2] = 'e') then
-      begin
-        Inc(I2);
-        if (I2 <= Len) and CharInSet(AnExpr[I2], ['+', '-']) then
-          Inc(I2);
-        while (I2 <= Len) and CharInSet(AnExpr[I2], ['0'..'9']) do
-          Inc(I2);
-      end;
-    end;
-  end;
-
-  procedure ReadWord(AnExpr: string);
-  var
-    OldI2: Integer;
-    constChar: Char;
-  begin
-    isConstant := false;
-    I1 := I2;
-    while (I1 < Len) and (AnExpr[I1] = ' ') do
-      Inc(I1);
-    I2 := I1;
-    if I1 <= Len then
-    begin
-      if AnExpr[I2] = HexChar then
-      begin
-        Inc(I2);
-        OldI2 := I2;
-        ReadConstant(AnExpr, true);
-        if I2 = OldI2 then
-        begin
-          isConstant := false;
-          while (I2 <= Len) and CharInSet(AnExpr[I2], ['a'..'z', 'A'..'Z', '_', '0'..'9']) do
-            Inc(I2);
-        end;
-      end
-      else if AnExpr[I2] = FDecimalSeparator then
-        ReadConstant(AnExpr, false)
-      else
-        // String constants can be delimited by ' or "
-        // but need not be - see below
-        // To use a delimiter inside the string, double it up to escape it
-        case AnExpr[I2] of
-          '''', '"':
-            begin
-              isConstant := true;
-              constChar := AnExpr[I2];
-              Inc(I2);
-              while (I2 <= Len) do begin
-                // Regular character?
-                if (AnExpr[I2] <> constChar) then
-                  Inc(I2)
-                else begin
-                  // we do have a const, now check for escaped consts
-                  if (I2 + 1 <= Len) and
-                    (AnExpr[I2 + 1] = constChar) then begin
-                    Inc(I2,2) //skip past, deal with duplicates later
-                  end else begin
-                    // at the trailing delimiter
-                    Inc(I2); //move past delimiter
-                    break;
-                  end;
-                end;
-              end;
-            end;
-          // However string constants can also appear without delimiters
-          'a'..'z', 'A'..'Z', '_':
-            begin
-              while (I2 <= Len) and CharInSet(AnExpr[I2], ['a'..'z', 'A'..'Z', '_', '0'..'9']) do
-                Inc(I2);
-            end;
-          '>', '<':
-            begin
-              if (I2 <= Len) then
-                Inc(I2);
-              if CharInSet(AnExpr[I2], ['=', '<', '>']) then
-                Inc(I2);
-            end;
-          '=':
-            begin
-              if (I2 <= Len) then
-                Inc(I2);
-              if CharInSet(AnExpr[I2], ['=', '<', '>']) then
-                Inc(I2);
-            end;
-          '&':
-            begin
-              if (I2 <= Len) then
-                Inc(I2);
-              if CharInSet(AnExpr[I2], ['&']) then
-                Inc(I2);
-            end;
-          '|':
-            begin
-              if (I2 <= Len) then
-                Inc(I2);
-              if CharInSet(AnExpr[I2], ['|']) then
-                Inc(I2);
-            end;
-          ':':
-            begin
-              if (I2 <= Len) then
-                Inc(I2);
-              if AnExpr[I2] = '=' then
-                Inc(I2);
-            end;
-          '!':
-            begin
-              if (I2 <= Len) then
-                Inc(I2);
-              if AnExpr[I2] = '=' then //support for !=
-                Inc(I2);
-            end;
-          '+':
-            begin
-              Inc(I2);
-              if (AnExpr[I2] = '+') and FWordsList.Search(PChar('++'), I) then // PChar intended here
-                Inc(I2);
-            end;
-          '-':
-            begin
-              Inc(I2);
-              if (AnExpr[I2] = '-') and FWordsList.Search(PChar('--'), I) then // PChar intended here
-                Inc(I2);
-            end;
-          '^', '/', '\', '*', '(', ')', '%', '~', '$':
-            Inc(I2);
-          '0'..'9':
-            ReadConstant(AnExpr, false);
-        else
-          begin
-            Inc(I2);
-          end;
-        end;
-    end;
-  end;
-
 begin
   I2 := 1;
   S := Trim(AnExpression);
   Len := Length(S);
   repeat
-    ReadWord(S);
+    isConstant := false;
+    I1 := I2;
+    while (I1 < Len) and (S[I1] = ' ') do
+      Inc(I1);
+    I2 := I1;
+    ReadWord(S, isConstant, I1, I2, Len);
     W := Trim(Copy(S, I1, I2 - I1));
     if isConstant then
     begin
-      if W[1] = HexChar then
+      if W <> '' then
       begin
-        // convert hexadecimal to decimal
-        W[1] := '$';
-        W := IntToStr(StrToInt(W));
+        TempWord := CreateConstant(W);
+        DestCollection.Add(TempWord);
+        FConstantsList.Add(TempWord);
       end;
-      if (W[1] = '''') or (W[1] = '"') then begin
-         // StringConstant will handle any escaped quotes
-        TempWord := TStringConstant.Create(W);
-      end else begin
-        DecSep := Pos(FDecimalSeparator, W);
-        if (DecSep > 0) then
-        begin
-{$IFDEF ENG_NUMBERS}
-          // we'll have to convert FDecimalSeparator into DecimalSeparator
-          // otherwise the OS will not understand what we mean
-          W[DecSep] := DecimalSeparator;
-{$ENDIF}
-          TempWord := TFloatConstant.Create(W, W)
-        end else begin
-          TempWord := TIntegerConstant.Create(StrToInt(W));
-        end;
-      end;
-      DestCollection.Add(TempWord);
-      FConstantsList.Add(TempWord);
     end
     else if Length(W) > 0 then
       if FWordsList.Search(PChar(W), I) then // PChar intended here
@@ -1006,7 +857,7 @@ begin
         begin
           DestCollection.Add(FWordsList.Items[I])
         end else begin
-          raise EParserException.Create('Unknown variable '''+W+''' found.');
+          raise ExceptionClass.Create('Unknown variable '''+W+''' found.');
         end;
       end;
   until I2 > Len;
@@ -1016,7 +867,7 @@ procedure TCustomExpressionParser.Check(AnExprList: TExprCollection);
 var
   I, J, K, L: Integer;
 begin
-  AnExprList.Check;
+  AnExprList.Check(ExceptionClass);
   with AnExprList do
   begin
     I := 0;
@@ -1100,18 +951,18 @@ begin
       {-----MISC CHECKS-----}
       if (TExprWord(Items[I]).IsVariable) and ((I < Count - 1) and
         (TExprWord(Items[I + 1]).IsVariable)) then
-        raise EParserException.Create('Missing operator between '''+TExprWord(Items[I]).Name+''' and '''+TExprWord(Items[I]).Name+'''');
+        raise ExceptionClass.Create('Missing operator between '''+TExprWord(Items[I]).Name+''' and '''+TExprWord(Items[I]).Name+'''');
       if (TExprWord(Items[I]).ResultType = etLeftBracket) and (I >= Count - 1) then
-        raise EParserException.Create('Missing closing bracket');
+        raise ExceptionClass.Create('Missing closing bracket');
       if (TExprWord(Items[I]).ResultType = etRightBracket) and ((I < Count - 1) and
         (TExprWord(Items[I + 1]).ResultType = etLeftBracket)) then
-        raise EParserException.Create('Missing operator between )(');
+        raise ExceptionClass.Create('Missing operator between )(');
       if (TExprWord(Items[I]).ResultType = etRightBracket) and ((I < Count - 1) and
         (TExprWord(Items[I + 1]).IsVariable)) then
-        raise EParserException.Create('Missing operator between ) and constant/variable');
+        raise ExceptionClass.Create('Missing operator between ) and constant/variable');
       if (TExprWord(Items[I]).ResultType = etLeftBracket) and ((I > 0) and
         (TExprWord(Items[I - 1]).IsVariable)) then
-        raise EParserException.Create('Missing operator between constant/variable and (');
+        raise ExceptionClass.Create('Missing operator between constant/variable and (');
 
       {-----CHECK ON INTPOWER------}
       if (TExprWord(Items[I]).Name = '^') and ((I < Count - 1) and
@@ -1267,6 +1118,189 @@ begin
   RemoveConstants(ExprRec);
 end;
 
+function TCustomExpressionParser.ExceptionClass: TExceptionClass;
+begin
+  Result := EParserError;
+end;
+
+procedure TCustomExpressionParser.ReadWord(const AnExpr: string;
+  var isConstant: Boolean; var I1, I2: Integer; Len: Integer);
+var
+  I: Integer;
+  OldI2: Integer;
+  constChar: Char;
+
+  procedure ReadConstant(AnExpr: string; isHex: Boolean);
+  begin
+    isConstant := true;
+
+    while (I2 <= Len) and (CharInSet(AnExpr[I2], ['0'..'9']) or
+      (isHex and CharInSet(AnExpr[I2], ['a'..'f', 'A'..'F']))) do
+      Inc(I2);
+    if I2 <= Len then
+    begin
+      if AnExpr[I2] = FDecimalSeparator then
+      begin
+        Inc(I2);
+        while (I2 <= Len) and CharInSet(AnExpr[I2], ['0'..'9']) do
+          Inc(I2);
+      end;
+      if (I2 <= Len) and (AnExpr[I2] = 'e') then
+      begin
+        Inc(I2);
+        if (I2 <= Len) and CharInSet(AnExpr[I2], ['+', '-']) then
+          Inc(I2);
+        while (I2 <= Len) and CharInSet(AnExpr[I2], ['0'..'9']) do
+          Inc(I2);
+      end;
+    end;
+  end;
+
+begin
+  if I1 <= Len then
+  begin
+    if AnExpr[I2] = HexChar then
+    begin
+      Inc(I2);
+      OldI2 := I2;
+      ReadConstant(AnExpr, true);
+      if I2 = OldI2 then
+      begin
+        isConstant := false;
+        while (I2 <= Len) and CharInSet(AnExpr[I2], ['a'..'z', 'A'..'Z', '_', '0'..'9']) do
+          Inc(I2);
+      end;
+    end
+    else if AnExpr[I2] = FDecimalSeparator then
+      ReadConstant(AnExpr, false)
+    else
+      // String constants can be delimited by ' or "
+      // but need not be - see below
+      // To use a delimiter inside the string, double it up to escape it
+      case AnExpr[I2] of
+        '''', '"':
+          begin
+            isConstant := true;
+            constChar := AnExpr[I2];
+            Inc(I2);
+            while (I2 <= Len) do begin
+              // Regular character?
+              if (AnExpr[I2] <> constChar) then
+                Inc(I2)
+              else begin
+                // we do have a const, now check for escaped consts
+                if (I2 + 1 <= Len) and
+                  (AnExpr[I2 + 1] = constChar) then begin
+                  Inc(I2,2) //skip past, deal with duplicates later
+                end else begin
+                  // at the trailing delimiter
+                  Inc(I2); //move past delimiter
+                  break;
+                end;
+              end;
+            end;
+          end;
+        // However string constants can also appear without delimiters
+        'a'..'z', 'A'..'Z', '_':
+          begin
+            while (I2 <= Len) and CharInSet(AnExpr[I2], ['a'..'z', 'A'..'Z', '_', '0'..'9']) do
+              Inc(I2);
+          end;
+        '>', '<':
+          begin
+            if (I2 <= Len) then
+              Inc(I2);
+            if CharInSet(AnExpr[I2], ['=', '<', '>']) then
+              Inc(I2);
+          end;
+        '=':
+          begin
+            if (I2 <= Len) then
+              Inc(I2);
+            if CharInSet(AnExpr[I2], ['=', '<', '>']) then
+              Inc(I2);
+          end;
+        '&':
+          begin
+            if (I2 <= Len) then
+              Inc(I2);
+            if CharInSet(AnExpr[I2], ['&']) then
+              Inc(I2);
+          end;
+        '|':
+          begin
+            if (I2 <= Len) then
+              Inc(I2);
+            if CharInSet(AnExpr[I2], ['|']) then
+              Inc(I2);
+          end;
+        ':':
+          begin
+            if (I2 <= Len) then
+              Inc(I2);
+            if AnExpr[I2] = '=' then
+              Inc(I2);
+          end;
+        '!':
+          begin
+            if (I2 <= Len) then
+              Inc(I2);
+            if AnExpr[I2] = '=' then //support for !=
+              Inc(I2);
+          end;
+        '+':
+          begin
+            Inc(I2);
+            if (AnExpr[I2] = '+') and FWordsList.Search(PChar('++'), I) then // PChar intended here
+              Inc(I2);
+          end;
+        '-':
+          begin
+            Inc(I2);
+            if (AnExpr[I2] = '-') and FWordsList.Search(PChar('--'), I) then // PChar intended here
+              Inc(I2);
+          end;
+        '^', '/', '\', '*', '(', ')', '%', '~', '$':
+          Inc(I2);
+        '0'..'9':
+          ReadConstant(AnExpr, false);
+      else
+        begin
+          Inc(I2);
+        end;
+      end;
+  end;
+end;
+
+function TCustomExpressionParser.CreateConstant(W: string): TConstant;
+var
+  DecSep: Integer;
+begin
+  if W[1] = HexChar then
+  begin
+    // convert hexadecimal to decimal
+    W[1] := '$';
+    W := IntToStr(StrToInt(W));
+  end;
+  if (W[1] = '''') or (W[1] = '"') then begin
+     // StringConstant will handle any escaped quotes
+    Result := TStringConstant.Create(W);
+  end else begin
+    DecSep := Pos(FDecimalSeparator, W);
+    if (DecSep > 0) then
+    begin
+  {$IFDEF ENG_NUMBERS}
+      // we'll have to convert FDecimalSeparator into DecimalSeparator
+      // otherwise the OS will not understand what we mean
+      W[DecSep] := DecimalSeparator;
+  {$ENDIF}
+      Result := TFloatConstant.Create(W, W)
+    end else begin
+      Result := TIntegerConstant.Create(StrToInt(W));
+    end;
+  end;
+end;
+
 function TCustomExpressionParser.MakeRec: PExpressionRec;
 var
   I: Integer;
@@ -1288,6 +1322,7 @@ begin
   Result^.ExprWord := nil;
   Result^.ResetDest := false;
   Result^.ExpressionContext := @FExpressionContext;
+  Result^.IsNull := False;
   Result^.IsNullPtr := nil;
 end;
 
@@ -2606,19 +2641,31 @@ begin
 end;
 
 procedure FuncRound_F_FF(Param: PExpressionRec);
+{$IFDEF SUPPORT_ROUNDTO}
 var
   TempInt: Integer;
+{$ENDIF}
 begin
+{$IFDEF SUPPORT_ROUNDTO}
   TempInt := Trunc(PDouble(Param^.Args[1])^);
   PDouble(Param^.Res.MemoryPos^)^ := RoundTo(PDouble(Param^.Args[0])^, -TempInt);
+{$ELSE}
+  PDouble(Param^.Res.MemoryPos^)^ := Round(PDouble(Param^.Args[0])^); // 2nd arg to be incorporated
+{$ENDIF}
 end;
 
 procedure FuncRound_F_FI(Param: PExpressionRec);
+{$IFDEF SUPPORT_ROUNDTO}
 var
   TempInt: integer;
+{$ENDIF}
 begin
+{$IFDEF SUPPORT_ROUNDTO}
   TempInt := PInteger(Param^.Args[1])^;
   PDouble(Param^.Res.MemoryPos^)^ := RoundTo(PDouble(Param^.Args[0])^, -TempInt);
+{$ELSE}
+  PDouble(Param^.Res.MemoryPos^)^ := Round(PDouble(Param^.Args[0])^); // 2nd arg to be incorporated
+{$ENDIF}
 end;
 
 procedure FuncRTrim(Param: PExpressionRec);

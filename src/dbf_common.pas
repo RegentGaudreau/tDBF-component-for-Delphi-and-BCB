@@ -6,7 +6,7 @@ interface
 
 uses
   SysUtils, Classes, DB
-{$ifndef MSWINDOWS}
+{$ifndef WINDOWS}
   , Types, dbf_wtil
 {$ifdef KYLIX}
   , Libc
@@ -26,6 +26,8 @@ const
 
 type
   EDbfError = class (EDatabaseError)
+  end;
+  EDbfErrorInvalidIndex = class(EDbfError)
   end;
   EDbfWriteError = class (EDbfError)
   end;
@@ -117,7 +119,7 @@ function CharInSet(C: AnsiChar; const CharSet: TSysCharSet): Boolean;
 
 {$ifndef SUPPORT_PATHDELIM}
 const
-{$ifdef MSWINDOWS}
+{$ifdef WINDOWS}
   PathDelim = '\';
 {$else}
   PathDelim = '/';
@@ -140,14 +142,6 @@ function GetCompleteFileName(const Base, FileName: string): string;
 function IsFullFilePath(const Path: string): Boolean; // full means not relative
 function DateTimeToBDETimeStamp(aDT: TDateTime): double;
 function BDETimeStampToDateTime(aBT: double): TDateTime;
-(*
-function  GetStrFromInt(Val: Integer; const Dst: PAnsiChar): Integer; // Was PChar
-procedure GetStrFromInt_Width(Val: Integer; const Width: Integer; const Dst: PAnsiChar; const PadChar: AnsiChar); // Was Char
-{$ifdef SUPPORT_INT64}
-function  GetStrFromInt64(Val: Int64; const Dst: PAnsiChar): Integer; // Was PChar
-procedure GetStrFromInt64_Width(Val: Int64; const Width: Integer; const Dst: PAnsiChar; const PadChar: AnsiChar); // Was Char
-{$endif}
-*)
 procedure FindNextName(BaseName: string; var OutName: string; var Modifier: Integer);
 {$ifdef USE_CACHE}
 function GetFreeMemory: Integer;
@@ -176,9 +170,15 @@ function Max(x, y: integer): integer;
 {$endif}
 {$endif}
 
+{$ifndef DELPHI_7}
+type
+  PPAnsiChar = ^PAnsiChar;
+  PDouble = ^Double;
+{$ENDIF}
+
 implementation
 
-{$ifdef MSWINDOWS}
+{$ifdef WINDOWS}
 uses
   dbf_AnsiStrings,
   Windows;
@@ -208,7 +208,7 @@ end;
 
 function IsFullFilePath(const Path: string): Boolean; // full means not relative
 begin
-{$ifdef MSWINDOWS}
+{$ifdef WINDOWS}
   Result := Length(Path) > 1;
   if Result then
     // check for 'x:' or '\\' at start of path
@@ -233,31 +233,6 @@ begin
   lpath := lpath + lfile;
   result := lpath;
 end;
-
-// it seems there is no pascal function to convert an integer into a PAnsiChar???
-
-(*
-procedure GetStrFromInt_Width(Val: Integer; const Width: Integer; const Dst: PAnsiChar; const PadChar: AnsiChar); // Was Char
-var
-  Temp: array[0..10] of AnsiChar;
-  I, J: Integer;
-  NegSign: boolean;
-begin
-  {$I getstrfromint.inc}
-end;
-
-{$ifdef SUPPORT_INT64}
-
-procedure GetStrFromInt64_Width(Val: Int64; const Width: Integer; const Dst: PAnsiChar; const PadChar: AnsiChar); // Was Char
-var            
-  Temp: array[0..19] of AnsiChar;
-  I, J: Integer;
-  NegSign: boolean;
-begin
-  {$I getstrfromint.inc}
-end;
-{$endif}
-*)
 
 // it seems there is no pascal function to convert an integer into a PAnsiChar???
 // NOTE: in dbf_dbffile.pas there is also a convert routine, but is slightly different
@@ -372,7 +347,7 @@ end;
 
 function IncludeTrailingPathDelimiter(const Path: string): string;
 begin
-{$ifdef MSWINDOWS}
+{$ifdef WINDOWS}
   Result := IncludeTrailingBackslash(Path);
 {$else}
   Result := IncludeTrailingSlash(Path);

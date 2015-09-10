@@ -43,7 +43,7 @@ type
 
     procedure FillExpressList; override;
     procedure HandleUnknownVariable(VarName: string); override;
-    function  GetVariableInfo(VarName: AnsiString): TDbfFieldDef;
+    function  GetVariableInfo(VarName: AnsiString): TDbfFieldDef; virtual;
     function  CurrentExpression: string; override;
     procedure ValidateExpression(AExpression: string); virtual;
     function  GetResultType: TExpressionType; override;
@@ -59,7 +59,7 @@ type
 
     procedure ClearExpressions; override;
 
-    procedure ParseExpression(AExpression: string); virtual;
+    procedure ParseExpression(const AExpression: string); virtual;
     function ExtractFromBuffer(Buffer: PChar; RecNo: Integer): PAnsiChar; overload; virtual;
     function ExtractFromBuffer(Buffer: PChar; RecNo: Integer; var IsNull: Boolean): PAnsiChar; overload; virtual;
 
@@ -171,9 +171,9 @@ type
   TDateTimeFieldVar = class(TFieldVar)
   private
     FFieldVal: TDateTimeRec;
-    function GetFieldType: TExpressionType; override;
   protected
     function GetFieldVal: Pointer; override;
+    function GetFieldType: TExpressionType; override;
   public
     procedure Refresh(Buffer: PAnsiChar); override;
   end;
@@ -181,9 +181,9 @@ type
   TBooleanFieldVar = class(TFieldVar)
   private
     FFieldVal: boolean;
-    function GetFieldType: TExpressionType; override;
   protected
     function GetFieldVal: Pointer; override;
+    function GetFieldType: TExpressionType; override;
   public
     procedure Refresh(Buffer: PAnsiChar); override;
   end;
@@ -539,7 +539,7 @@ begin
   // is this variable a fieldname?
   FieldInfo := GetVariableInfo(VarName);
   if FieldInfo = nil then
-    raise EParserException.CreateFmt(STRING_INDEX_BASED_ON_UNKNOWN_FIELD, [VarName]);
+    raise ExceptionClass.CreateFmt(STRING_PARSER_UNKNOWN_FIELD, [VarName]);
 
   // define field in parser
   FillChar(VariableFieldInfo, SizeOf(VariableFieldInfo), 0);
@@ -588,7 +588,7 @@ begin
         TempFieldVar.ExprWord := DefineDateTimeVariable(VarName, TempFieldVar.FieldVal, TempFieldVar.IsNullPtr, @VariableFieldInfo);
       end;
   else
-    raise EParserException.CreateFmt(STRING_INDEX_BASED_ON_INVALID_FIELD, [VarName]);
+    raise ExceptionClass.CreateFmt(STRING_PARSER_INVALID_FIELDTYPE, [VarName]);
   end;
 
   // add to our own list
@@ -605,6 +605,8 @@ var
   I: Integer;
 begin
   inherited;
+
+  FFieldType := etUnknown;
 
   // test if already freed
   if FFieldVarList <> nil then
@@ -627,7 +629,7 @@ procedure TDbfParser.ValidateExpression(AExpression: string);
 begin
 end;
 
-procedure TDbfParser.ParseExpression(AExpression: string);
+procedure TDbfParser.ParseExpression(const AExpression: string);
 begin
   // clear any current expression
   ClearExpressions;
@@ -675,15 +677,23 @@ begin
     Result := PAnsiChar(ExpResult);
     IsNull := False;
     if LastRec <> nil then
-      if LastRec.IsNullPtr <> nil then
-        IsNull := LastRec.IsNullPtr^;
+      if LastRec^.IsNullPtr <> nil then
+        IsNull := LastRec^.IsNullPtr^;
   end else begin
     // simple field, get field result
-    Result := TFieldVar(FFieldVarList.Objects[0]).FieldVal;
-    // if string then dereference
-    if FFieldType = etString then
-      Result := PAnsiChar(PPAnsiChar(Result)^); // Was PPChar
-    IsNull := TFieldVar(FFieldVarList.Objects[0]).IsNullPtr^;
+    if FFieldVarList.Count <> 0 then
+    begin
+      Result := TFieldVar(FFieldVarList.Objects[0]).FieldVal;
+      // if string then dereference
+      if FFieldType = etString then
+        Result := PAnsiChar(PPAnsiChar(Result)^); // Was PPChar
+      IsNull := TFieldVar(FFieldVarList.Objects[0]).IsNullPtr^;
+    end
+    else
+    begin
+      Result := PAnsiChar(ExpResult);
+      IsNull := False;
+    end;
   end;
 end;
 

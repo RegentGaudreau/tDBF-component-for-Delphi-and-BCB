@@ -2469,7 +2469,7 @@ begin
   begin
     ADayOfWeek := DayOfWeek(ADate);
     {$ifdef DELPHI_XE}
-    TempStr := TFormatSettings.Create.ShortDayNames[ADayOfWeek];
+    TempStr := FormatSettings.ShortDayNames[ADayOfWeek];
     {$else}
     TempStr := ShortDayNames[ADayOfWeek];
     {$endif}

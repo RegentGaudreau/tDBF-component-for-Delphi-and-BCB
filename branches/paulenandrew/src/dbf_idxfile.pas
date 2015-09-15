@@ -1737,7 +1737,7 @@ end;
 
 procedure TMdx7Tag.SetTagName(NewName: string);
 begin
-  dbfStrPLCopy(PMdx7Tag(Tag)^.TagName, AnsiString(NewName), 10); // was PChar, AnsiString cast added
+  dbfStrPLCopy(PMdx7Tag(Tag)^.TagName, AnsiString(NewName), 32); // was PChar, AnsiString cast added
   PMdx7Tag(Tag)^.TagName[32] := #0;
 end;
 

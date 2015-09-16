@@ -1424,7 +1424,7 @@ function TDbfFile.GetFieldInfo(const FieldName: AnsiString): TDbfFieldDef;
 var
   I: Integer;
   lfi: TDbfFieldDef;
-  AFieldName: string;
+  AFieldName: AnsiString;
 begin
   AFieldName := FieldName;
   UniqueString(AFieldName);

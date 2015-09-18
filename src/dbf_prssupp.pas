@@ -415,7 +415,7 @@ var
   FloatValue: Extended;
 begin
   P := Src;
-  while (P < PChar(Src) + Size) and (P^ = ' ') do
+  while (P < PAnsiChar(Src) + Size) and (P^ = ' ') do
     Inc(P);
   Dec(Size, P - Src);
   Src := P;

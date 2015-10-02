@@ -2612,16 +2612,16 @@ begin
   P := Param^.Args[0];
   Len := dbfStrLen(P);
   NewWord := True;
-  Buffer[1]:= #0;
+  Buffer[1] := #0;
   for Index:= 1 to Len do
   begin
     if P^ = ' ' then
       NewWord := True
     else
     begin
+      Buffer[0] := P^;
       if NewWord then
       begin
-        Buffer[0] := P^;
         P^ := dbfStrUpper(Buffer)^;
         NewWord := False;
       end

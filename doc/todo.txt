@@ -23,3 +23,46 @@ needs fixing:
 
 bug reports:
 - wimb\app0018
+
+TODO (PaulenAndrew):
+
+Collaborate with lploeger on testing/fixing demo
+- Consider adding demo to repository
+- "How to sort data" > "Demo 'index'" > "Sort by title (NDX)" > Not sorted! Side effect of r355.
+- "How to search using filter" > "Search title" "L". Finds "Kylie Minogue", whereas expected "L.A.X".
+- "How to search using index" > "Demo 'index'" > Rebuild Indexes > sharing violation. Exclusive behaviour changed in 7.0 but is correct. 
+- Rich text not displayed correctly in "What is tDbf", "How does that work  *", "How to search using index *", "How to filter data *", "Compatibiliy *" and "Calculated fields *". Related to bad index?
+- Unexpected horizontal scroll bar. Set “DBGrid1.Columns[0].Width := 200;” in TMainForm.FormCreate?
+
+Collaborate with lploeger on release candidate for version 7.0:
+
+Subversion
+	src
+		[X] Update TDBF_MAJOR_VERSION, TDBF_MINOR_VERSION and TDBF_SUB_MINOR_VERSION constants
+	doc
+		[X] Update History.txt
+Files
+	TDbf Win32_Linux/
+		Should this be renamed Win_Linux, as it is also applicable to Windows x64?
+	TDbf 7.0/
+		tdbf700.tar.bz
+			There is no documentation on how to create this file (maybe involves Linux, tar, bzip)
+		tdbf700.zip
+			There is no documentation on how to create this file (maybe involves Windows, unknown ZIP client)
+	TDbf Demo App/
+		Need demos for new features
+		Should this be under source control? Currently, it is not
+		Should this be integrated into the archive of the release?
+			The problem currently is that it is separate and gets an unrelated version number
+	TDbf Documentation/
+		Needs documentation for new features
+		Should this be under source control? Currently, it is not
+		Should this be an OpenDocument format file?
+			The problem currently is that the PDF is difficult to edit and there is no source file
+		Should this be integrated into the archive of the release? This would be simpler
+Wiki
+	Do we need anything here?
+News
+	Announcement of TDbf 7.0 release
+Web site at http://tdbf.sourceforge.net/
+	PaulenAndrew, lploeger and nashev have no access. Only mdv has access?

@@ -28,10 +28,13 @@ TODO (PaulenAndrew):
 
 Collaborate with lploeger on release 7.0
 
+Pending for lploeger
+- Commit changes for demo
+- Confirm that r588 fixes "How to sort data" > "Demo 'index'" > "Sort by title (NDX)"
+
 Demo
 - Added TDbf Demo 1.3.6 to trunc/demo
 - Consider dropping version number and including as part of release
-- "How to sort data" > "Demo 'index'" > "Sort by title (NDX)" > Not sorted! Side effect of r355.
 - "How to search using filter" > "Search author" "L". Finds "Kylie Minogue", whereas expected "L.A.X".
 	Still don't think r578 is correct
 		If loPartialMatch is used and there is no exact match, it should find the least key that is greater.

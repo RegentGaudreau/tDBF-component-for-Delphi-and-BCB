@@ -28,6 +28,10 @@ TODO (PaulenAndrew):
 
 Collaborate with lploeger on release 7.0
 
+C++ Builder 10 Seattle
+- Get package working / a necessary files version controlled
+- Get demo working / a necessary files version controlled
+
 Demo
 - Consider dropping version number and including as part of release
 - "How to search using filter" > "Search author" "L". Finds "Kylie Minogue", whereas expected "L.A.X".

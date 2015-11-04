@@ -40,7 +40,6 @@ Demo
 		Should not negate Result
 		What is a descending index on AUTHOR proving here? Just change it to ascending?
 		A robust way to do what Lennert suggests is to start at the end and go backwards, without negating comparisons. But, then you may as well use an ascending index.
-- How to set project paths/where to output build if it is not version controlled/etc.
 - Demo new features
 
 Documentation

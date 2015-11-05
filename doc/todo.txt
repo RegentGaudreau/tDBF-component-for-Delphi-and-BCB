@@ -28,12 +28,7 @@ TODO (PaulenAndrew):
 
 Collaborate with lploeger on release 7.0
 
-C++ Builder 10 Seattle
-- Get package working / a necessary files version controlled
-- Get demo working / a necessary files version controlled
-
 Demo
-- Consider dropping version number and including as part of release
 - "How to search using filter" > "Search author" "L". Finds "Kylie Minogue", whereas expected "L.A.X".
 	Still don't think r578 is correct
 		Complicated by the fact that it gives a result even though there is no partial match in this case!
@@ -44,11 +39,10 @@ Demo
 		Should not negate Result
 		What is a descending index on AUTHOR proving here? Just change it to ascending?
 		A robust way to do what Lennert suggests is to start at the end and go backwards, without negating comparisons. But, then you may as well use an ascending index.
-- Demo new features
+- Demo new features (if significant)
 
 Documentation
-- Consider replacing with OpenDocument format file
-- Consider dropping version number and including as part of release
+- Replace with OpenDocument format file
 - Document new features
 
 Files

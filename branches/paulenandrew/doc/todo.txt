@@ -42,8 +42,10 @@ Demo
 - Demo new features (if significant)
 
 Documentation
-- Replace with OpenDocument format file
+- Update version/author name/date
 - Document new features
+- Remove old features (eg. UseFloatFields)
+- Review todo.txt
 
 Files
 - TDbf Win32_Linux should be renamed Win_Linux, as it is also applicable to Win64, or renamed OS neutral
@@ -53,14 +55,21 @@ Files
 - Do not need separate demo and documentation, as this is now in the repository and will be part of the archive
 
 Web site
-- PaulenAndrew, lploeger and nashev have no access to http://tdbf.sf.net/. Only mdv has access?
 
 Release checklist
-- Document changes in doc/History.txt
-- Update TDBF_MAJOR_VERSION, TDBF_MINOR_VERSION and TDBF_SUB_MINOR_VERSION constants 
-- Test code
-- Merge code into trunk
-- Add tag rel #-#-#
-- Prepare files and make available
-- Announcement in "News"
-- Announcement on http://tdbf.sf.net
+- Demo
+	Change the demo if significant new features were added
+- Documentation
+	Document changes in doc/history.txt
+	Document changes in doc/tdbf.odt and export to doc/tdbf.pdf
+	Document demo changes in demo/history.txt
+- Testing
+- Version
+	Update TDBF_MAJOR_VERSION, TDBF_MINOR_VERSION and TDBF_SUB_MINOR_VERSION constants 
+- Release
+	Merge code into trunk
+	Add tag named "rel #-#-#"
+	Prepare tdbf###.zip and tdbf###.tar.gz and make available in "Files"
+- Announcement in "News" with summary of changes
+- Announcement on http://tdbf.sf.net with summary of changes
+	NOTE: paulenandrew, lploeger and nashev have no access to http://tdbf.sf.net/. Only mdv has access.

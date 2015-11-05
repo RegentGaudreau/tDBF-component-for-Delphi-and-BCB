@@ -9,7 +9,7 @@ Version
 
 Determine the version number
 - The version number is 3 parts, each part is 1 digit, eg. 7.0.0
-- If the third digit is 0, it is not displayed to the user and should not be referenced in user documentation
+- If the third digit is 0, it is not displayed to the user and should not be used in user documentation, eg. 7.0
 - Update the TDBF_MAJOR_VERSION, TDBF_MINOR_VERSION and TDBF_SUB_MINOR_VERSION constants 
 
 
@@ -31,7 +31,7 @@ Document your changes
 Testing
 -------
 
-Test your changes
+Test your changes on as many compiler versions as you are able to
 
 
 Release
@@ -51,6 +51,6 @@ Make a release
 - Announce the release, with a summary of changes, on http://tdbf.sf.net
 
 NOTE: 
-mdv, nashev has access to "Files"
+mdv, nashev have access to "Files"
 mdv, nashev, paulenandrew and lpoeger have access to "News"
 mdv (only) has access to http://tdbf.sf.net

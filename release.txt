@@ -24,7 +24,7 @@ Documentation
 
 Document your changes
 - Document changes to the code in doc/history.txt
-- Document changes to the functionality in doc/tdbf.odt and export to doc/tdbf.pdf (this can be done in OpenOffice)
+- Document changes to the functionality in doc/tdbf.odt, update the Contents section and export to doc/tdbf.pdf (this can be done in OpenOffice)
 - Document changes to the functionality of the demo in demo/history.txt
 
 

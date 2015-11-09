@@ -66,18 +66,18 @@ type
 
   TNullMemoFile = class(TMemoFile)
   protected
-    procedure SetHeaderOffset(NewValue: Integer); override;
-    procedure SetRecordSize(NewValue: Integer); override;
-    procedure SetHeaderSize(NewValue: Integer); override;
+    procedure SetHeaderOffset({%H-}NewValue: Integer); override;
+    procedure SetRecordSize({%H-}NewValue: Integer); override;
+    procedure SetHeaderSize({%H-}NewValue: Integer); override;
 
-    function  LockSection(const Offset: TPagedFileOffset; const Length: Cardinal; const Wait: Boolean): Boolean; override;
-    function  UnlockSection(const Offset: TPagedFileOffset; const Length: Cardinal): Boolean; override;
+    function  LockSection(const {%H-}Offset: TPagedFileOffset; const {%H-}Length: Cardinal; const {%H-}Wait: Boolean): Boolean; override;
+    function  UnlockSection(const {%H-}Offset: TPagedFileOffset; const {%H-}Length: Cardinal): Boolean; override;
 
     function  GetBlockLen: Integer; override;
     function  GetMemoSize: Integer; override;
     function  GetNextFreeBlock: Integer; override;
-    procedure SetNextFreeBlock(BlockNo: Integer); override;
-    procedure SetBlockLen(BlockLen: Integer); override;
+    procedure SetNextFreeBlock({%H-}BlockNo: Integer); override;
+    procedure SetBlockLen({%H-}BlockLen: Integer); override;
 
   public
     constructor Create(ADbfFile: pointer);
@@ -85,8 +85,8 @@ type
     procedure CloseFile; override;
     procedure OpenFile; override;
 
-    function  ReadRecord(IntRecNum: Integer; Buffer: Pointer): Integer; override;
-    procedure WriteRecord(IntRecNum: Integer; Buffer: Pointer); override;
+    function  ReadRecord({%H-}IntRecNum: Integer; {%H-}Buffer: Pointer): Integer; override;
+    procedure WriteRecord({%H-}IntRecNum: Integer; {%H-}Buffer: Pointer); override;
   end;
 
   PInteger = ^Integer;

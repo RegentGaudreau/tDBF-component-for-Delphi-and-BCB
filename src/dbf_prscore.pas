@@ -27,7 +27,9 @@ interface
 uses
   SysUtils,
   Classes,
+  {$ifndef FPC_VERSION}
   Db,
+  {$endif}
   Math,
   dbf_Common,
   dbf_prssupp,
@@ -274,7 +276,7 @@ var
 implementation
 
 uses
-  dbf_AnsiStrings;
+  dbf_ansistrings;
 
 procedure LinkVariable(ExprRec: PExpressionRec);
 begin
@@ -846,6 +848,8 @@ begin
       end;
     end
     else if Length(W) > 0 then
+    begin
+      I := -1;
       if FWordsList.Search(PChar(W), I) then // PChar intended here
       begin
         DestCollection.Add(FWordsList.Items[I])
@@ -860,6 +864,7 @@ begin
           raise ExceptionClass.Create('Unknown variable '''+W+''' found.');
         end;
       end;
+    end;
   until I2 > Len;
 end;
 
@@ -1251,12 +1256,14 @@ begin
         '+':
           begin
             Inc(I2);
+            I := -1;
             if (AnExpr[I2] = '+') and FWordsList.Search(PChar('++'), I) then // PChar intended here
               Inc(I2);
           end;
         '-':
           begin
             Inc(I2);
+            I := -1;
             if (AnExpr[I2] = '-') and FWordsList.Search(PChar('--'), I) then // PChar intended here
               Inc(I2);
           end;
@@ -1292,7 +1299,7 @@ begin
   {$IFDEF ENG_NUMBERS}
       // we'll have to convert FDecimalSeparator into DecimalSeparator
       // otherwise the OS will not understand what we mean
-      W[DecSep] := DecimalSeparator;
+      W[DecSep] := DecimalSeparator{%H-};
   {$ENDIF}
       Result := TFloatConstant.Create(W, W)
     end else begin
@@ -1363,6 +1370,7 @@ begin
   p := Pos('(', S);
   if p > 0 then
     S := Copy(S, 1, p - 1);
+  I := -1;
   if FWordsList.Search(pchar(S), I) then // PChar intended here
     Result := TExprWord(FWordsList.Items[I]).Description
   else
@@ -1554,7 +1562,7 @@ var
   TempStr: AnsiString;
 begin
   // create in temporary string
-  TempStr := FormatDateTime('YYYYMMDD', PDateTimeRec(Param^.Args[0])^.DateTime);
+  TempStr := AnsiString(FormatDateTime('YYYYMMDD', PDateTimeRec(Param^.Args[0])^.DateTime));
   if Param^.ArgList[0]^.IsNullPtr^ then
     FillChar(PAnsiChar(TempStr)^, Length(TempStr), ' ');
   // copy to buffer
@@ -2390,7 +2398,7 @@ begin
               ResSource := @Buffer
             else
             begin
-              StringValue := FormatDateTime('YYYYMMDD', PDateTime(Arg)^);
+              StringValue := AnsiString(FormatDateTime('YYYYMMDD', PDateTime(Arg)^));
               Len := ResLength;
               ResSource := PAnsiChar(StringValue);
             end;
@@ -2469,9 +2477,9 @@ begin
   begin
     ADayOfWeek := DayOfWeek(ADate);
     {$ifdef DELPHI_XE}
-    TempStr := FormatSettings.ShortDayNames[ADayOfWeek];
+    TempStr := AnsiString(FormatSettings.ShortDayNames[ADayOfWeek]);
     {$else}
-    TempStr := ShortDayNames[ADayOfWeek];
+    TempStr := AnsiString(ShortDayNames[ADayOfWeek]);
     {$endif}
   end
   else
@@ -2612,7 +2620,7 @@ begin
   P := Param^.Args[0];
   Len := dbfStrLen(P);
   NewWord := True;
-  Buffer[1] := #0;
+  Buffer[1]:= #0;
   for Index:= 1 to Len do
   begin
     if P^ = ' ' then
@@ -2720,10 +2728,10 @@ begin
     Inc(Index);
   SetLength(TempStr, Index);
   case Param^.ExprWord.ResultType of
-    etFloat: Val(TempStr, PDouble(Param^.Res.MemoryPos^)^, Code);
-    etInteger: Val(TempStr, PInteger(Param^.Res.MemoryPos^)^, Code);
+    etFloat: Val(string(TempStr), PDouble(Param^.Res.MemoryPos^)^, Code);
+    etInteger: Val(string(TempStr), PInteger(Param^.Res.MemoryPos^)^, Code);
 {$ifdef SUPPORT_INT64}
-    etLargeInt: Val(TempStr, PLargeInt(Param^.Res.MemoryPos^)^, Code);
+    etLargeInt: Val(string(TempStr), PLargeInt(Param^.Res.MemoryPos^)^, Code);
 {$endif}
   end;
 end;

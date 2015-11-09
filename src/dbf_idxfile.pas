@@ -22,7 +22,6 @@ uses
 {$endif}
   dbf_parser,
   dbf_prsdef,
-  dbf_cursor,
   dbf_collate,
   dbf_common;
 
@@ -38,6 +37,13 @@ const
   MaxIndexKeyLen = 100;
 
 type
+  // TDbfPointerList (almost) matches TDbfPointerList of older versions of Delphi,
+  // up to at least D2009 and perhaps XE as well.
+  // Delphi XE2 and up use dynamic arrays, not compatible with fixed length arrays:
+  // TPointerList = array of Pointer;
+  PDbfPointerList = ^TDbfPointerList;
+  TDbfPointerList = array[0..(MaxInt div 16) - 1] of Pointer;
+
   EDbfIndexError = class(EDbfError);
 
   TIndexPage = class;
@@ -84,7 +90,7 @@ type
   private
     function GetKeyType: AnsiChar;
   protected
-    FResultLen: Integer; 
+    FResultLen: Integer;
 
     function IsIndex: Boolean; override;
     procedure ValidateExpression(AExpression: string); override;
@@ -319,7 +325,7 @@ type
     procedure WalkLast;
     function  WalkPrev: boolean;
     function  WalkNext: boolean;
-    
+
     function  CompareKeysDate(Key1, Key2: PAnsiChar): Integer;
     function  CompareKeysLevel7(Key1, Key2: PAnsiChar): Integer;
     function  CompareKeysNumericNDX(Key1, Key2: PAnsiChar): Integer;
@@ -367,16 +373,16 @@ type
     function  Update(RecNo: Integer; PrevBuffer, NewBuffer: TDbfRecordBuffer): Boolean;
     procedure Delete(RecNo: Integer; Buffer: TDbfRecordBuffer);
     function  CheckKeyViolation(Buffer: TDbfRecordBuffer; RecNo: Integer): Boolean;
-    procedure RecordDeleted(RecNo: Integer; Buffer: TDbfRecordBuffer);
-    function  RecordRecalled(RecNo: Integer; Buffer: TDbfRecordBuffer): Boolean;
+    procedure RecordDeleted({%H-}RecNo: Integer; {%H-}Buffer: TDbfRecordBuffer);
+    function  RecordRecalled({%H-}RecNo: Integer; {%H-}Buffer: TDbfRecordBuffer): Boolean;
     procedure DeleteIndex(const AIndexName: string);
     procedure RepageFile;
     procedure CompactFile;
     procedure BulkLoadIndex;
     procedure BulkLoadIndexes;
-    procedure MergeSort(List: pPointerList; L, R: Integer);
-    procedure MergeSort2(List, TempList: pPointerList; L, R: Integer);
-    procedure MergeSort3(List, TempList: pPointerList; L0, L1, R0, R1: Integer);
+    procedure MergeSort(List: PDbfPointerList; L, R: Integer);
+    procedure MergeSort2(List, TempList: PDbfPointerList; L, R: Integer);
+    procedure MergeSort3(List, TempList: PDbfPointerList; L0, L1, R0, R1: Integer);
     procedure MergeSortCheckCancel;
     function  MergeSortCompare(Item1, Item2: Pointer): Integer;
     procedure PrepareRename(NewFileName: string);
@@ -443,7 +449,7 @@ function IndexNameNormalize(Value: string): string;
 implementation
 
 uses
-  dbf_AnsiStrings,
+  dbf_ansistrings,
   dbf_dbffile,
   dbf_fields,
   dbf_str,
@@ -459,7 +465,7 @@ const
   RecBOF = 0;
   RecEOF = MaxInt;
 
-  lcidBinary = $0A03;
+//lcidBinary = $0A03;
 
   KeyFormat_Expression = $00;
   KeyFormat_Data       = $10;
@@ -700,7 +706,7 @@ end;
 
 function LocaleCallBack(LocaleString: PAnsiChar): Integer; stdcall;
 begin
-  LCIDList.Add(Pointer(StrToInt(String('$'+LocaleString))));
+  LCIDList.Add({%H-}Pointer(StrToInt(String('$'+LocaleString))));
   Result := 1;
 end;
 
@@ -1546,7 +1552,7 @@ end;
 function TNdxPage.GetEntry(AEntryNo: Integer): Pointer;
 begin
   // get base + offset
-  Result := PAnsiChar(@PNdxPage(PageBuffer)^.FirstEntry) + 
+  Result := PAnsiChar(@PNdxPage(PageBuffer)^.FirstEntry) +
     (SwapWordLE(PIndexHdr(FIndexFile.IndexHeader)^.KeyRecLen) * AEntryNo);
 end;
 
@@ -2143,7 +2149,7 @@ begin
     DecodeDate(Now, year, month, day);
     if FIndexVersion = xBaseVII then
       PMdxHdr(Header)^.MdxVersion := 3
-    else  
+    else
       PMdxHdr(Header)^.MdxVersion := 2;
     PMdxHdr(Header)^.Year := year - 1900;
     PMdxHdr(Header)^.Month := month;
@@ -2273,7 +2279,7 @@ begin
   // now adjust keylen to align on DWORD boundaries
   PIndexHdr(FIndexHeader)^.KeyRecLen := SwapWordLE((SwapWordLE(
     PIndexHdr(FIndexHeader)^.KeyLen) + FEntryHeaderSize + 3) and not 3);
-  PIndexHdr(FIndexHeader)^.NumKeys := SwapWordLE((RecordSize - FPageHeaderSize) div 
+  PIndexHdr(FIndexHeader)^.NumKeys := SwapWordLE((RecordSize - FPageHeaderSize) div
     SwapWordLE(PIndexHdr(FIndexHeader)^.KeyRecLen));
 end;
 
@@ -2303,7 +2309,7 @@ begin
   // parse index expression; if it cannot be parsed, why bother making index?
   TempParser := TDbfIndexParser.Create(FDbfFile);
   try
-    TempParser.ParseExpression(String(FieldDesc));
+    TempParser.ParseExpression(FieldDesc);
     // check if result type is correct
     fieldType := TempParser.KeyType;
   finally
@@ -2351,7 +2357,7 @@ begin
     WriteFileHeader;
     // store selected index
     FSelectedIndex := tagNo;
-    FIndexName := String(TagName);
+    FIndexName := TagName;
     // store new headerno
     FHeaderPageNo := GetNewPageNo;
     FTempMdxTag.HeaderPageNo := FHeaderPageNo;
@@ -2366,7 +2372,7 @@ begin
   ClearIndex;
 
   // parse expression, we know it's parseable, we've checked that
-  FCurrentParser.ParseExpression(String(FieldDesc));
+  FCurrentParser.ParseExpression(FieldDesc);
 
   // looked up index expression: now we can edit
 //  FIsExpression := ixExpression in Options;
@@ -2491,7 +2497,7 @@ begin
         FLeaves[I] := FLeaves[I].LowerPage;
       // parse expression
       try
-        FParsers[I].ParseExpression(AnsiString(PIndexHdr(FIndexHeader)^.KeyDesc));
+        FParsers[I].ParseExpression(string(AnsiString(PIndexHdr(FIndexHeader)^.KeyDesc)));
       except
         {$IFDEF TDBF_IGNORE_INVALID_INDICES}
         on E: EDbfErrorInvalidIndex do
@@ -2930,6 +2936,7 @@ begin
     EntryMax := FProgressMax;
   BufferMax := BulkLoadMemoryAllocSize div KeyRecLen;
   GetMem(PPEntries, EntryMax * SizeOf(Pointer));
+  PEntry := nil;
   try
     FillChar(PPEntries^, EntryMax * SizeOf(Pointer), 0);
     BufferList := TList.Create;
@@ -3039,9 +3046,9 @@ begin
     BulkLoadIndex;
 end;
 
-procedure TIndexFile.MergeSort(List: pPointerList; L, R: Integer);
+procedure TIndexFile.MergeSort(List: PDbfPointerList; L, R: Integer);
 var
-  TempList: pPointerList;
+  TempList: PDbfPointerList;
   Size: Integer;
 begin
   if L < R then
@@ -3057,7 +3064,7 @@ begin
   end;
 end;
 
-procedure TIndexFile.MergeSort2(List, TempList: pPointerList; L, R: Integer);
+procedure TIndexFile.MergeSort2(List, TempList: PDbfPointerList; L, R: Integer);
 var
   C: Integer;
   M: Integer;
@@ -3077,7 +3084,7 @@ begin
   end;
 end;
 
-procedure TIndexFile.MergeSort3(List, TempList: pPointerList; L0, L1, R0, R1: Integer);
+procedure TIndexFile.MergeSort3(List, TempList: PDbfPointerList; L0, L1, R0, R1: Integer);
 var
   I: Integer;
 
@@ -3412,6 +3419,7 @@ begin
   else
   begin
 //  KeyBuffer := FCurrentParser.ExtractFromBuffer(Buffer);
+    IsNull := False;
     KeyBuffer := FCurrentParser.ExtractFromBuffer(PAnsiChar(Buffer), RecNo, IsNull);
 //  if (KeyType = 'D') and (FCurrentParser.ExtractIsNull(Buffer)) then
     if (KeyType = 'D') and IsNull then
@@ -3503,7 +3511,7 @@ begin
   SetLength(InfoKey, KeyLen);
   CopyCurrentKey(FUserKey, PAnsiChar(InfoKey));
   FInsertError := Format(STRING_KEY_VIOLATION, [GetName,
-    PhysicalRecNo, TrimRight(InfoKey)]);
+    PhysicalRecNo, dbfTrimRight(InfoKey)]);
 end;
 
 procedure TIndexFile.InsertError;
@@ -3654,6 +3662,7 @@ begin
   if FCanEdit and (PIndexHdr(FIndexHeader)^.KeyLen <> 0) then
   begin
     DeleteKey := ExtractKeyFromBuffer(PrevBuffer, RecNo);
+    FillChar(TempBuffer{%H-}, SizeOf(TempBuffer), 0);
     Move(DeleteKey^, TempBuffer, SwapWordLE(PIndexHdr(FIndexHeader)^.KeyLen));
     DeleteKey := @TempBuffer[0];
     InsertKey := ExtractKeyFromBuffer(NewBuffer, RecNo);
@@ -4159,7 +4168,7 @@ end;
 
 function TIndexFile.GetSequentialRecordCount: TSequentialRecNo;
 begin
-  Result := FRoot.Weight * (FRoot.HighIndex + 1);
+  Result := FRoot.Weight * (TSequentialRecNo(FRoot.HighIndex) + 1);
 end;
 
 function TIndexFile.GetSequentialRecNo: TSequentialRecNo;
@@ -4472,7 +4481,7 @@ end;
 
 function TIndexFile.VersionPosition: TPagedFileOffset;
 begin
-  Result := TPagedFileOffset(FMdxTag.HeaderPageNo) * PageSize + Integer(@PIndexHdr(nil)^.Version);
+  Result := TPagedFileOffset(FMdxTag.HeaderPageNo) * PageSize + {%H-}TPagedFileOffset(@PIndexHdr(nil)^.Version);
 end;
 
 function TIndexFile.ReadVersion(PVersion: PByte): Boolean;

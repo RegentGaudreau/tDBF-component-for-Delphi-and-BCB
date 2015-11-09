@@ -335,6 +335,28 @@
   {$define DELPHI_3}
 {$endif}
 
+{$ifdef VER300} // Delphi 10 Seattle
+  {$define DELPHI_10}
+  {$define DELPHI_XE8}
+  {$define DELPHI_XE7}
+  {$define DELPHI_XE6}
+  {$define DELPHI_XE5}
+  {$define DELPHI_XE4}
+  {$define DELPHI_XE3}
+  {$define DELPHI_XE2}
+  {$define DELPHI_XE}
+  {$define DELPHI_2010}
+  {$define DELPHI_2009}
+  {$define DELPHI_2007}
+  {$define DELPHI_2006}
+  {$define DELPHI_2005}
+  {$define DELPHI_8}
+  {$define DELPHI_7}
+  {$define DELPHI_6}
+  {$define DELPHI_5}
+  {$define DELPHI_4}
+  {$define DELPHI_3}
+{$endif}
 
 //-------------------------------------------------------
 //--- Conclude supported features from delphi version ---
@@ -384,6 +406,8 @@
 
 {$ifdef Delphi_7}
   {$define SUPPORT_NATIVEINT}
+  {$define SUPPORT_INT64_SEEK}
+  {$define SUPPORT_ROUNDTO}
 {$endif}
 
 {$ifdef Delphi_2007}
@@ -403,10 +427,6 @@
   {$define SUPPORT_MAXLISTSIZEDEPRECATED}
 {$endif}
 
-{$ifdef Delphi_2010}
-  {$define SUPPORT_ROUNDTO} // RoundTo was included with 2010 it seems
-{$endif}
-
 {$ifdef Delphi_XE}
   {$define SUPPORT_FORMATSETTINGS}
   {$define SUPPORT_FORMATSETTINGS_CREATE}
@@ -415,12 +435,20 @@
 {$ifdef DELPHI_XE3}
   {$define FLOATREC_DIGITS_IS_BYTE}
   {$define SUPPORT_TVALUEBUFFER}
+  {$define SUPPORT_GENERICS_FIELDLIST}
 {$endif}
 
 {$ifdef DELPHI_XE4}
   {$define SUPPORT_TRECBUF}
+  // Note for SUPPORT_ANSISTRINGS_UNIT: AnsiStrings.pas was shipped since D2009,
+  // but SysUtils supported PAnsiChar until XE3
   {$define SUPPORT_ANSISTRINGS_UNIT}
   {$define SUPPORT_TVALUEBUFFER_VAR}
+  {$define SUPPORT_CALCULATEFIELDS_NATIVEINT}
+{$endif}
+
+{$ifdef DELPHI_XE6}
+  {$define SUPPORT_FIELD_LIFECYCLES}
 {$endif}
 
 //------------------------------------------------------
@@ -452,6 +480,8 @@
   {$define SUPPORT_VARIANTS}
   {$define SUPPORT_SEPARATE_VARIANTS_UNIT}
   {$define SUPPORT_ROUNDTO}
+  {$define SUPPORT_INT64_SEEK}
+  {$define SUPPORT_FORMATSETTINGSTYPE}
 
   // FPC 2.0.x improvements
   {$ifdef VER2}

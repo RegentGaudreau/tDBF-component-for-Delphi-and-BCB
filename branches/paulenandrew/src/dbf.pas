@@ -137,7 +137,7 @@ type
     procedure ActiveChanged; override;
     procedure CheckBrowseMode; override;
     procedure LayoutChanged; override;
-    procedure RecordChanged(Field: TField); override;
+    procedure RecordChanged({%H-}Field: TField); override;
 
   public
     constructor Create(ADataSet: TDbf);
@@ -207,7 +207,7 @@ type
     FKeyBuffer: Pointer;
     function GetKeyBuffer: PAnsiChar;
     function InitKeyBuffer(Buffer: PAnsiChar): PAnsiChar;
-    procedure PostKeyBuffer(Commit: Boolean);
+    procedure PostKeyBuffer({%H-}Commit: Boolean);
 
     function GetIndexName: string;
     function GetVersion: string;
@@ -224,7 +224,7 @@ type
     procedure SetDbfIndexDefs(const Value: TDbfIndexDefs);
     procedure SetFilePath(const Value: string);
     procedure SetTableName(const S: string);
-    procedure SetVersion(const S: string);
+    procedure SetVersion(const {%H-}S: string);
     procedure SetLanguageID(NewID: Byte);
     procedure SetDataSource(Value: TDataSource);
     procedure SetMasterFields(const Value: string);
@@ -254,9 +254,9 @@ type
     procedure FreeRecordBuffer(var Buffer: TDbfRecordBuffer); override; {virtual abstract}
     procedure GetBookmarkData(Buffer: TDbfRecordBuffer; Data: Pointer); override; {virtual abstract}
     function  GetBookmarkFlag(Buffer: TDbfRecordBuffer): TBookmarkFlag; override; {virtual abstract}
-    function  GetRecord(Buffer: TDbfRecBuf; GetMode: TGetMode; DoCheck: Boolean): TGetResult; override; {virtual abstract}
+    function  GetRecord(Buffer: TDbfRecBuf; GetMode: TGetMode; {%H-}DoCheck: Boolean): TGetResult; override; {virtual abstract}
     function  GetRecordSize: Word; override; {virtual abstract}
-    procedure InternalAddRecord(Buffer: Pointer; AAppend: Boolean); override; {virtual abstract}
+    procedure InternalAddRecord(Buffer: Pointer; {%H-}AAppend: Boolean); override; {virtual abstract}
     procedure InternalClose; override; {virtual abstract}
     procedure InternalDelete; override; {virtual abstract}
     procedure InternalFirst; override; {virtual abstract}
@@ -265,6 +265,7 @@ type
     procedure InternalInitFieldDefs; override; {virtual abstract}
     procedure InternalInitRecord(Buffer: TDbfRecordBuffer); override; {virtual abstract}
     procedure InternalLast; override; {virtual abstract}
+    function DbfDefaultFields: Boolean;
     procedure InternalOpen; override; {virtual abstract}
     procedure InternalEdit; override; {virtual}
     procedure InternalCancel; override; {virtual}
@@ -280,7 +281,7 @@ type
     function  IsCursorOpen: Boolean; override; {virtual abstract}
     procedure SetBookmarkFlag(Buffer: TDbfRecordBuffer; Value: TBookmarkFlag); override; {virtual abstract}
     procedure SetBookmarkData(Buffer: TDbfRecordBuffer; Data: Pointer); override; {virtual abstract}
-    procedure SetFieldData(Field: TField; Buffer: TDbfValueBuffer);
+    procedure {%H-}SetFieldData(Field: TField; Buffer: TDbfValueBuffer);
 	  {$ifdef SUPPORT_OVERLOAD}overload;{$ENDIF} override; {virtual abstract}
 
     { virtual methods (mostly optionnal) }
@@ -303,7 +304,7 @@ type
 
 {$ifdef SUPPORT_VARIANTS}
     function  LocateRecordLinear(const KeyFields: String; const KeyValues: Variant; Options: TLocateOptions): Boolean;
-    function  LocateRecordIndex(const KeyFields: String; const KeyValues: Variant; Options: TLocateOptions): Boolean;
+    function  LocateRecordIndex(const {%H-}KeyFields: String; const KeyValues: Variant; Options: TLocateOptions): Boolean;
     function  LocateRecord(const KeyFields: String; const KeyValues: Variant; Options: TLocateOptions): Boolean;
 {$endif}
 
@@ -365,7 +366,7 @@ type
 
     // index support (use same syntax as ttable but is not related)
 {$ifdef SUPPORT_DEFAULT_PARAMS}
-    procedure AddIndex(const AIndexName, AFields: String; Options: TIndexOptions; const DescFields: String='');
+    procedure AddIndex(const AIndexName, AFields: String; Options: TIndexOptions; const {%H-}DescFields: String='');
 {$else}
     procedure AddIndex(const AIndexName, AFields: String; Options: TIndexOptions);
 {$endif}
@@ -520,6 +521,9 @@ var
 implementation
 
 uses
+{$ifdef SUPPORT_GENERICS_FIELDLIST}
+  System.Generics.Collections,
+{$endif}
   SysUtils,
 {$ifndef FPC}
   DBConsts,
@@ -536,7 +540,7 @@ uses
 {$ifdef SUPPORT_SEPARATE_VARIANTS_UNIT}
   Variants,
 {$endif}
-  dbf_AnsiStrings,
+  dbf_ansistrings,
   dbf_idxcur,
   dbf_memo,
   dbf_str;
@@ -545,7 +549,7 @@ uses
 const
   // TODO: move these to DBConsts
   SNotEditing = 'Dataset not in edit or insert mode';
-  SCircularDataLink = 'Circular datalinks are not allowed';
+//SCircularDataLink = 'Circular datalinks are not allowed';
 {$endif}
 
 function TableLevelToDbfVersion(TableLevel: integer): TXBaseVersion;
@@ -1038,11 +1042,11 @@ begin
       FBlobStreams^[I].Free;
     FreeMemAndNil(Pointer(FBlobStreams));
   end;
-  FreeRecordBuffer(TdbfRecordBuffer(FTempBuffer));
+  FreeRecordBuffer(FTempBuffer);
   // disconnect field objects
   BindFields(false);
   // Destroy field object (if not persistent)
-  if DefaultFields then
+  if DbfDefaultFields then
     DestroyFields;
 
   if FParser <> nil then
@@ -1117,7 +1121,6 @@ var
   TempFieldDef: TDbfFieldDef;
   TempMdxFile: TIndexFile;
   BaseName, lIndexName: string;
-  lIndexDef: TDbfIndexDef;
 begin
   FieldDefs.Clear;
 
@@ -1162,12 +1165,6 @@ begin
     if FDbfFile.IndexNames.Objects[I] = TempMdxFile then
       if FIndexDefs.GetIndexByName(lIndexName) = nil then
         TempMdxFile.GetIndexInfo(lIndexName, FIndexDefs.Add);
-  end;
-  for I := Pred(FIndexDefs.Count) downto 0 do
-  begin
-    lIndexDef := FIndexDefs[I];
-    if FDbfFile.IndexNames.IndexOf(lIndexDef.IndexFile) < 0 then
-      lIndexDef.Free;
   end;
 end;
 
@@ -1253,6 +1250,15 @@ begin
     FTranslationMode := tmNoneAvailable;
 end;
 
+function TDbf.DbfDefaultFields: Boolean;
+begin
+{$ifdef SUPPORT_FIELD_LIFECYCLES}
+  Result := (FieldOptions.AutoCreateMode <> acExclusive) or not (lcPersistent in Fields.LifeCycles);
+{$else}
+  Result := DefaultFields;
+{$endif}
+end;
+
 procedure TDbf.InternalOpen; {override virtual abstract from TDataset}
 const
   DbfOpenMode: array[Boolean, Boolean] of TPagedFileMode =
@@ -1334,7 +1340,7 @@ begin
   {$endif}
 
     // create the fields dynamically
-    if DefaultFields then
+    if DbfDefaultFields then
       CreateFields; // Create fields from fielddefs.
 
     BindFields(true);
@@ -1469,7 +1475,13 @@ var
   I, newRecord: Integer;
 begin
   // inherited method checks required fields
+{$ifdef FPC}
   inherited;
+{$else}
+{$ifdef DELPHI_7} // perhaps ifdef DELPHI_6
+  inherited;
+{$endif}
+{$endif}
   // if internalpost is called, we know we are active
   pRecord := pDbfRecord(ActiveBuffer);
   // commit blobs
@@ -1742,12 +1754,15 @@ begin
   IndexName := oldIndexName;
 end;
 
-procedure TDbf.CopyFrom(DataSet: TDataSet; FileName: string; DateTimeAsString: Boolean; Level: Integer);
+procedure TDbf.CopyFrom(DataSet: TDataSet; FileName: string;
+  DateTimeAsString: Boolean; Level: Integer);
 begin
   BatchMove(DataSet, FileName, DateTimeAsString, Level, bmCopy, [], nil);
 end;
 
-procedure TDbf.BatchMove(DataSet: TDataSet; FileName: string; DateTimeAsString: Boolean; Level: Integer; Mode: TDbfBatchMode; Options: TDbfBatchOptions; FieldMappings: TStrings); // 02/25/2011 spb CR 18708
+procedure TDbf.BatchMove(DataSet: TDataSet; FileName: string;
+  DateTimeAsString: Boolean; Level: Integer; Mode: TDbfBatchMode;
+  Options: TDbfBatchOptions; FieldMappings: TStrings);
 var                                                                                                                                                                               // 03/08/2011 spb CR 18716
   lPhysFieldDefs, lFieldDefs: TDbfFieldDefs;                                                                                                                                      // 03/08/2011 pb  CR 18706
   lSrcField, lDestField: TField;
@@ -1790,9 +1805,9 @@ var                                                                             
       with lFieldDefs.AddFieldDef do
       begin
         if Length(lSrcField.Name) > 0 then
-          FieldName := lSrcField.Name
+          FieldName := AnsiString(lSrcField.Name)
         else
-          FieldName := lSrcField.FieldName;
+          FieldName := AnsiString(lSrcField.FieldName);
         FieldType := lSrcField.DataType;
         Required := lSrcField.Required;
         if (1 <= lSrcField.FieldNo)
@@ -2057,10 +2072,10 @@ begin
     if GoForward then
     begin
       if Restart then FCursor.First;
-      Result := GetRecord(FTempBuffer, gmNext, false) = grOK;
+      Result := GetRecord(TDbfRecBuf(FTempBuffer), gmNext, false) = grOK;
     end else begin
       if Restart then FCursor.Last;
-      Result := GetRecord(FTempBuffer, gmPrior, false) = grOK;
+      Result := GetRecord(TDbfRecBuf(FTempBuffer), gmPrior, false) = grOK;
     end;
   finally
     FFindRecordFilter := false;
@@ -2108,7 +2123,11 @@ begin
       // FFilterBuffer contains record buffer
       saveState := SetTempState(dsCalcFields);
       try
+{$ifdef SUPPORT_CALCULATEFIELDS_NATIVEINT}
+        CalculateFields(NativeInt(FFilterBuffer));
+{$else}
         CalculateFields(FFilterBuffer);
+{$endif}
         if KeyValues = FieldValues[KeyFields] then
            Result := FieldValues[ResultFields];
       finally
@@ -2148,7 +2167,11 @@ end;
 function TDbf.LocateRecordLinear(const KeyFields: String; const KeyValues: Variant;
     Options: TLocateOptions): Boolean;
 var
+{$ifdef SUPPORT_GENERICS_FIELDLIST}
+  lstKeys              : TList<TField>;
+{$else}
   lstKeys              : TList;
+{$endif}
   iIndex               : Integer;
   Field                : TField;
   bMatchedData         : Boolean;
@@ -2195,7 +2218,11 @@ var
 begin
   Result := false;
   bVarIsArray := false;
+{$ifdef SUPPORT_GENERICS_FIELDLIST}
+  lstKeys := TList<TField>.Create;
+{$else}
   lstKeys := TList.Create;
+{$endif}
   FFilterBuffer := TDbfRecordBuffer(TempBuffer);
   SaveState := SetTempState(dsFilter);
   try
@@ -2261,6 +2288,7 @@ begin
 
   checkmatch := false;
   repeat
+    acceptable := True;
     if ReadCurrentRecord(TDbfRecordBuffer(TempBuffer), acceptable) = grError then
     begin
       Result := false;
@@ -2291,46 +2319,52 @@ var
   lIndexDef: TDbfIndexDef;
   lIndexFile, lSaveIndexFile: TIndexFile;
 begin
-  lCursor := nil;
-  lSaveCursor := nil;
-  lIndexFile := nil;
-  lSaveIndexFile := FIndexFile;
-  if (FCursor is TIndexCursor)
-    and (TIndexCursor(FCursor).IndexFile.Expression = KeyFields) then
+  if not (loCaseInsensitive in Options) then
   begin
-    lCursor := FCursor;
-  end else begin
-    lIndexDef := FIndexDefs.GetIndexByField(KeyFields);
-    if lIndexDef <> nil then
+    lCursor := nil;
+    lSaveCursor := nil;
+    lIndexFile := nil;
+    lSaveIndexFile := FIndexFile;
+    if (FCursor is TIndexCursor)
+      and (TIndexCursor(FCursor).IndexFile.Expression = KeyFields) then
     begin
-      lIndexName := ParseIndexName(lIndexDef.IndexFile);
-      lIndexFile := FDbfFile.GetIndexByName(lIndexName);
-      if lIndexFile <> nil then
+      lCursor := FCursor;
+    end else begin
+      lIndexDef := FIndexDefs.GetIndexByField(KeyFields);
+      if lIndexDef <> nil then
       begin
-        lSaveCursor := FCursor;
-        lCursor := TIndexCursor.Create(lIndexFile);
-        lSaveIndexName := lIndexFile.IndexName;
-        lIndexFile.IndexName := lIndexName;
-        FIndexFile := lIndexFile;
+        lIndexName := ParseIndexName(lIndexDef.IndexFile);
+        lIndexFile := FDbfFile.GetIndexByName(lIndexName);
+        if lIndexFile <> nil then
+        begin
+          lSaveCursor := FCursor;
+          lCursor := TIndexCursor.Create(lIndexFile);
+          lSaveIndexName := lIndexFile.IndexName;
+          lIndexFile.IndexName := lIndexName;
+          FIndexFile := lIndexFile;
+        end;
       end;
     end;
-  end;
-  if lCursor <> nil then
-  begin
-    FCursor := lCursor;
-    Result := LocateRecordIndex(KeyFields, KeyValues, Options);
-    if lSaveCursor <> nil then
+    if (lCursor <> nil) and (not TIndexCursor(lCursor).IndexFile.IsDescending) then
     begin
-      FCursor.Free;
-      FCursor := lSaveCursor;
-    end;
-    if lIndexFile <> nil then
-    begin
-      FLocateRecNo := FIndexFile.PhysicalRecNo;
-      lIndexFile.IndexName := lSaveIndexName;
-      FIndexFile := lSaveIndexFile;
-    end;
-  end else
+      FCursor := lCursor;
+      Result := LocateRecordIndex(KeyFields, KeyValues, Options);
+      if lSaveCursor <> nil then
+      begin
+        FCursor.Free;
+        FCursor := lSaveCursor;
+      end;
+      if lIndexFile <> nil then
+      begin
+        FLocateRecNo := FIndexFile.PhysicalRecNo;
+        lIndexFile.IndexName := lSaveIndexName;
+        FIndexFile := lSaveIndexFile;
+      end;
+    end
+    else
+      Result := LocateRecordLinear(KeyFields, KeyValues, Options);    
+  end
+  else
     Result := LocateRecordLinear(KeyFields, KeyValues, Options);
 end;
 
@@ -2551,7 +2585,7 @@ begin
   FCursor.First;
   repeat
     // repeatedly retrieve next record until eof encountered
-    getRes := GetRecord(FTempBuffer, gmNext, true);
+    getRes := GetRecord(TDbfRecBuf(FTempBuffer), gmNext, true);
     if getRes = grOk then
       inc(Result);
   until getRes <> grOk;
@@ -2761,7 +2795,7 @@ end;
 
 function TDbf.GetVersion: string;
 begin
-  Result := Format('%d.%02d', [TDBF_MAJOR_VERSION, TDBF_MINOR_VERSION]);
+  Result := DbfVersionString;
 end;
 
 procedure TDbf.SetVersion(const S: string);
@@ -2882,14 +2916,16 @@ end;
 procedure TDbf.DeleteIndex(const AIndexName: string);
 var
   lIndexFileName: string;
+  lIndexDef: TDbfIndexDef;
 begin
   // extract absolute path if NDX file
   lIndexFileName := ParseIndexName(AIndexName);
   // try to delete index
   FDbfFile.DeleteIndex(lIndexFileName);
 
-  // refresh index defs
-  InternalInitFieldDefs;
+  // remove deleted index from index defs
+  lIndexDef := FIndexDefs.GetIndexByName(AIndexName);
+  lIndexDef.Free;
 end;
 
 procedure TDbf.OpenIndexFile(IndexFile: string);
@@ -3117,6 +3153,7 @@ function TDbf.ResyncSharedReadCurrentRecord: Boolean;
 var
   Buffer: PAnsiChar;
 begin
+  Buffer := nil;
   Result := FDbfFile.ResyncSharedReadBuffer;
   if Result then
   begin
@@ -3228,7 +3265,7 @@ function TDbf.SearchKeyPChar(Key: PAnsiChar; SearchType: TSearchKeyType; KeyIsAN
 var
   StringBuf: array [0..MaxIndexKeyLen] of AnsiChar;
 begin
-  if FCursor = nil then
+  if (FCursor = nil) or not (FCursor is TIndexCursor) then
   begin
     Result := false;
     exit;
@@ -3371,7 +3408,7 @@ end;
 function TDbf.InitKeyBuffer(Buffer: PAnsiChar): PAnsiChar;
 begin
   FillChar(Buffer^, RecordSize, 0);
-  InitRecord(TDbfRecordBuffer(Buffer));
+  InitRecord(TDbfRecBuf(Buffer));
   Result := Buffer;
 end;
 

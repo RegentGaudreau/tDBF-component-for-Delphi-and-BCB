@@ -50,7 +50,7 @@ type
   public
     function Read(var Buffer; Count: Longint): Longint; override;
     function Write(const Buffer; Count: Longint): Longint; override;
-{$ifdef SUPPORT_INT64}
+{$ifdef SUPPORT_INT64_SEEK}
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
 {$else}
     function Seek(Offset: Longint; Origin: Word): Longint; override;
@@ -181,8 +181,10 @@ uses
   Windows,
 {$ifdef KYLIX}
   Libc, 
-{$endif}  
+{$endif}
+{$IFDEF Delphi_7}
   Types,
+{$ENDIF}
 {$else}
   dbf_wtil,
 {$endif}
@@ -205,7 +207,7 @@ begin
     raise EPagedFile.Create(STRING_WRITE_ERROR);
 end;
 
-{$ifdef SUPPORT_INT64}
+{$ifdef SUPPORT_INT64_SEEK}
 function TPagedFileStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int64;
 begin
   Result := FileSeek(Handle, Offset, Ord(Origin));
@@ -406,7 +408,7 @@ begin
   else if PageNo = 0 then
     Result := 0
   else
-    Result := FHeaderOffset + FHeaderSize + (TPagedFileOffset(FPageSize) * (PageNo - 1));
+    Result := TPagedFileOffset(FHeaderOffset) + FHeaderSize + (TPagedFileOffset(FPageSize) * (TPagedFileOffset(PageNo) - 1));
 end;
 
 procedure TPagedFile.CheckCachedSize(const APosition: TPagedFileOffset);
@@ -535,7 +537,7 @@ var
 begin
   if FBufferAhead then
   begin
-    Offset := TPagedFileOffset(IntRecNum - FBufferPage) * PageSize;
+    Offset := (TPagedFileOffset(IntRecNum) - FBufferPage) * PageSize;
     if (FBufferPage <> -1) and (FBufferPage <= IntRecNum) and
 //      (Offset+RecordSize <= FBufferReadSize) then
         (Offset + RecordSize <= FBufferSize) then
@@ -551,7 +553,7 @@ begin
         exit;
       end;
       // reset offset into buffer
-      Offset := TPagedFileOffset(IntRecNum - FBufferPage) * PageSize;
+      Offset := (TPagedFileOffset(IntRecNum) - FBufferPage) * PageSize;
     end;
     // now we have this record in buffer
     Move(PAnsiChar(FBufferPtr)[Offset], Buffer^, RecordSize); // Was PChar
@@ -569,10 +571,10 @@ var
 begin
   if FBufferAhead then
   begin
-    RecEnd := TPagedFileOffset(IntRecNum - FBufferPage + PagesPerRecord) * PageSize;
+    RecEnd := (TPagedFileOffset(IntRecNum) - FBufferPage + PagesPerRecord) * PageSize;
     if (FBufferPage <> -1) and (FBufferPage <= IntRecNum) and
 //      (RecEnd <= FBufferMaxSize) then
-        (RecEnd <= FBufferMaxSize) and (RecEnd <= FBufferSize + RecordSize) then
+        (RecEnd <= FBufferMaxSize) and (RecEnd <= TPagedFileOffset(FBufferSize) + RecordSize) then
     begin
       // extend buffer?
       if RecEnd > FBufferSize then
@@ -580,7 +582,7 @@ begin
     end else begin
       // record outside buffer, need to synchronize first
       SynchronizeBuffer(IntRecNum);
-      RecEnd := PagesPerRecord * PageSize;
+      RecEnd := TPagedFileOffset(PagesPerRecord) * PageSize;
       FBufferSize := RecEnd;
     end;
     // we can write this record to buffer
@@ -847,9 +849,9 @@ begin
   if RecordCount <> NewValue then
   begin
     if FPageOffsetByHeader then
-      FCachedSize := FHeaderSize + FHeaderOffset + FPageSize * NewValue
+      FCachedSize := FHeaderSize + TPagedFileOffset(FHeaderOffset) + (TPagedFileOffset(FPageSize) * NewValue)
     else
-      FCachedSize := FPageSize * NewValue;
+      FCachedSize := TPagedFileOffset(FPageSize) * NewValue;
 //    FCachedSize := CalcPageOffset(NewValue);
     FRecordCount := NewValue;
     FStream.Size := FCachedSize;

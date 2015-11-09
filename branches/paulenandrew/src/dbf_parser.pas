@@ -45,7 +45,7 @@ type
     procedure HandleUnknownVariable(VarName: string); override;
     function  GetVariableInfo(VarName: AnsiString): TDbfFieldDef; virtual;
     function  CurrentExpression: string; override;
-    procedure ValidateExpression(AExpression: string); virtual;
+    procedure ValidateExpression({%H-}AExpression: string); virtual;
     function  GetResultType: TExpressionType; override;
     function  GetResultLen: Integer;
 
@@ -537,12 +537,12 @@ var
   VariableFieldInfo: TVariableFieldInfo;
 begin
   // is this variable a fieldname?
-  FieldInfo := GetVariableInfo(VarName);
+  FieldInfo := GetVariableInfo(AnsiString(VarName));
   if FieldInfo = nil then
     raise ExceptionClass.CreateFmt(STRING_PARSER_UNKNOWN_FIELD, [VarName]);
 
   // define field in parser
-  FillChar(VariableFieldInfo, SizeOf(VariableFieldInfo), 0);
+  FillChar(VariableFieldInfo{%H-}, SizeOf(VariableFieldInfo), 0);
   VariableFieldInfo.DbfFieldDef := FieldInfo;
   VariableFieldInfo.NativeFieldType := FieldInfo.NativeFieldType;
   VariableFieldInfo.Size := FieldInfo.Size;
@@ -656,6 +656,7 @@ function TDbfParser.ExtractFromBuffer(Buffer: PAnsiChar; RecNo: Integer): PAnsiC
 var
   IsNull: Boolean;
 begin
+  IsNull := False;
   Result := ExtractFromBuffer(Buffer, RecNo, IsNull);
 end;
 
@@ -745,6 +746,7 @@ begin
         NewExprRec.ExprWord := Variable;
         NewExprRec.Oper := NewExprRec.ExprWord.ExprFunc;
         NewExprRec.Args[0] := NewExprRec.ExprWord.AsPointer;
+        NewExprRec.IsNullPtr := @NewExprRec.IsNull;
         CurrentRec := nil;
         DisposeList(ExprRec);
         ExprRec := NewExprRec;

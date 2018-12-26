@@ -256,7 +256,7 @@ type
     function  GetBookmarkFlag(Buffer: TDbfRecordBuffer): TBookmarkFlag; override; {virtual abstract}
     function  GetRecord(Buffer: TDbfRecBuf; GetMode: TGetMode; {%H-}DoCheck: Boolean): TGetResult; override; {virtual abstract}
     function  GetRecordSize: Word; override; {virtual abstract}
-    procedure InternalAddRecord(Buffer: {$ifdef SUPPORT_TRECORDBUFFER}TDbfRecordBuffer{$else}Pointer{$endif}; {%H-}Append: Boolean); override; {virtual abstract}
+    procedure InternalAddRecord(Buffer: {$ifdef InternalAddRecord_Wants_TRecordBuffer}TDbfRecordBuffer{$else}Pointer{$endif}; {%H-}Append: Boolean); override; {virtual abstract}
     procedure InternalClose; override; {virtual abstract}
     procedure InternalDelete; override; {virtual abstract}
     procedure InternalFirst; override; {virtual abstract}

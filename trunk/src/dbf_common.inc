@@ -504,6 +504,7 @@
 {$endif}
 
 {$ifdef Delphi_XE}
+  {$define InternalAddRecord_Wants_TRecordBuffer}
   {$define SUPPORT_FORMATSETTINGS}
   {$define SUPPORT_FORMATSETTINGS_CREATE}
 {$endif}

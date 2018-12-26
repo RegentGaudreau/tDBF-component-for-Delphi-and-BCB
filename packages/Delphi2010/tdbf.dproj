@@ -152,6 +152,7 @@
 			<DCCReference Include="..\..\src\dbf_pgcfile.pas"/>
 			<DCCReference Include="..\..\src\dbf_wtil.pas"/>
 			<DCCReference Include="..\..\src\dbf.pas"/>
+			<DCCReference Include="..\..\src\dbf_ansistrings.pas"/>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>

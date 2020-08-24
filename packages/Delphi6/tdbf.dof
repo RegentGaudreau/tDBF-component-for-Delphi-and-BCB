@@ -42,7 +42,7 @@ ImageBase=4194304
 ExeDescription=TDbf for Delphi 6 -runtime-
 [Directories]
 OutputDir=
-UnitOutputDir=.\dcu
+UnitOutputDir=.\dcu\runtime
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=

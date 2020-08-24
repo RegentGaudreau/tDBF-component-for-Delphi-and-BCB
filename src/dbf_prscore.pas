@@ -2375,7 +2375,7 @@ begin
           end;
           etFloat:
           begin
-            ResSource := @Buffer;
+            ResSource := @Buffer[0];
             ResLength := 20;
             Precision := 4;
             FloatValue := PDouble(Arg)^;
@@ -2405,7 +2405,7 @@ begin
           etInteger,
           etLargeInt:
           begin
-            ResSource := @Buffer;
+            ResSource := @Buffer[0];
             ResLength := 11;
             if not ArgIsNull then
               Len:= IntToStrWidth(PInteger(Arg)^, ResLength, ResSource, Pad, ' ');
@@ -2416,7 +2416,7 @@ begin
           begin
             ResLength := 8;
             if ArgIsNull then
-              ResSource := @Buffer
+              ResSource := @Buffer[0]
             else
             begin
               StringValue := AnsiString(FormatDateTime('YYYYMMDD', PDateTime(Arg)^));

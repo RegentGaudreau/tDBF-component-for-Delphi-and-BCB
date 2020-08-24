@@ -3322,7 +3322,7 @@ begin
   if PIndexHdr(FIndexHeader)^.KeyType = 'D' then
   begin
     FUserNumeric:= PDouble(Buffer)^ + 2415019; {Julian date}
-    Result:= @FUserNumeric;
+    Result:= TDbfRecordBuffer(@FUserNumeric);
   end;
 end;
 

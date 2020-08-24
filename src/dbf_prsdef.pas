@@ -55,7 +55,7 @@ type
     procedure AssureSpace(ASize: Integer);
     procedure Resize(NewSize: Integer; Exact: Boolean);
     procedure Rewind;
-    procedure Append(Source: PAnsiChar; Length: Integer); // Was PChar
+    procedure Append(Source: Pointer; Length: Integer); // Was PChar
     procedure AppendInteger(Source: Integer);
 
     property Memory: PPAnsiChar read FMemory; // Was: PPChar
@@ -1206,7 +1206,7 @@ begin
   FMemoryPos^ := FMemory^ + pos;
 end;
 
-procedure TDynamicType.Append(Source: PAnsiChar; Length: Integer); // Was PChar
+procedure TDynamicType.Append(Source: Pointer; Length: Integer); // Was PChar
 begin
   // make room for string plus null-terminator
   AssureSpace(Length+4);

@@ -501,13 +501,13 @@
 
   {$define SUPPORT_INCLTRAILPATHDELIM} // Was missing 20130529
   {$define SUPPORT_INCLTRAILBACKSLASH} // Was missing 20130529
-
-  {$warn UNSAFE_TYPE off}
-  {$warn UNSAFE_CODE off}
-  {$warn UNSAFE_CAST off}
 {$endif}
 
 {$ifdef Delphi_7}
+  {$warn UNSAFE_TYPE off}
+  {$warn UNSAFE_CODE off}
+  {$warn UNSAFE_CAST off}
+
   {$define SUPPORT_NATIVEINT}
   {$define SUPPORT_INT64_SEEK}
   {$define SUPPORT_ROUNDTO}

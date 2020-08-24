@@ -245,7 +245,7 @@ begin
   FloatReset(FloatResult);
   if FloatRec.Negative then
     FloatPutChar(FloatResult, DBF_NEGATIVESIGN);
-  DigitCount := dbfStrLen(@FloatRec.Digits);
+  DigitCount := dbfStrLen(@FloatRec.Digits[0]);
   if Exponent <= 0 then
   begin
     DigitMin := Exponent;
@@ -319,7 +319,7 @@ var
   Precision: Integer;
 begin
   DecimalToDbfStrFormat(FloatResult, FloatRec, Format, FieldPrec);
-  Precision:= Integer(dbfStrLen(@FloatRec.Digits));
+  Precision:= Integer(dbfStrLen(@FloatRec.Digits[0]));
   if FloatResult.Len > FloatResult.FieldSize then
   begin
     Precision:= Precision - (FloatResult.Len - FloatResult.FieldSize);
@@ -516,7 +516,7 @@ begin
 {$ifdef SUPPORT_FORMATSETTINGSTYPE}
     Result := dbfTextToFloatFmt(@Buffer, FloatValue, fvExtended, DbfFormatSettings);
 {$else}
-    Result := dbfTextToFloat(@Buffer, FloatValue, fvExtended);
+    Result := dbfTextToFloat(@Buffer[0], FloatValue, fvExtended);
 {$endif}
   end;
   if not Result then

@@ -513,12 +513,12 @@
   {$define SUPPORT_ROUNDTO}
 {$endif}
 
-{$ifdef Delphi_2006}
+{$ifdef Delphi_2005}
   (* This define tells the code that it can use TFormatSettings
      and pass it to SysUtils.FloatToText.
      (This is not the FormatSettings Variable in SysUtils, which was
      introduced with Delphi XE.)
-     It was possibly supported in earlier versions than Delphi 2006.
+     It was possibly supported in earlier versions than Delphi 2005.
      If you are sure, please correct this. *)
   {$define SUPPORT_FORMATSETTINGSTYPE}
 {$endif}

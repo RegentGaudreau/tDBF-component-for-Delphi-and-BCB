@@ -29,7 +29,8 @@ package tdbf;
 
 requires
   vcl,
-  vcldb;
+  vcldb,
+  rtl;
 
 contains
   dbf_collate in '..\..\src\dbf_collate.pas',
@@ -50,6 +51,7 @@ contains
   dbf_avl in '..\..\src\dbf_avl.pas',
   dbf_pgcfile in '..\..\src\dbf_pgcfile.pas',
   dbf_wtil in '..\..\src\dbf_wtil.pas',
-  dbf in '..\..\src\dbf.pas';
+  dbf in '..\..\src\dbf.pas',
+  dbf_ansistrings in '..\..\src\dbf_ansistrings.pas';
 
 end.

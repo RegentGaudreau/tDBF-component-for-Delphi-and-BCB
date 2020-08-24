@@ -91,7 +91,7 @@ ImageBase=4194304
 ExeDescription=TDbf for Delphi 7 Designtime
 [Directories]
 OutputDir=
-UnitOutputDir=.\dcu
+UnitOutputDir=.\dcu\designtime
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=

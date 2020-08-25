@@ -1,4 +1,4 @@
-package tdbf_d5r;
+package tdbf50;
 
 {$R *.RES}
 {$ALIGN ON}

@@ -9,15 +9,15 @@ MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
 DCC = $(ROOT)\bin\dcc32.exe $**
 BRCC = $(ROOT)\bin\brcc32.exe $**
 #------------------------------------------------------------------------------
-PROJECTS = tdbf_d5r.bpl tdbf_d5d.bpl
+PROJECTS = tdbf50.bpl dcltdbf50.bpl
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
 
-tdbf_d5d.bpl: tdbf_d5d.dpk
+dcltdbf50.bpl: dcltdbf50.dpk
   $(DCC)
 
-tdbf_d5r.bpl: tdbf_d5r.dpk
+tdbf50.bpl: tdbf50.dpk
   $(DCC)
 
 

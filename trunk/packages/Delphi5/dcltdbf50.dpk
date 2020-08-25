@@ -1,4 +1,4 @@
-package tdbf_d5d;
+package dcltdbf50;
 
 {$R *.RES}
 {$ALIGN ON}
@@ -29,7 +29,7 @@ package tdbf_d5d;
 requires
   vcl50,
   vcldb50,
-  tdbf_d5r;
+  tdbf50;
 
 contains
   dbf_reg in '..\..\src\dbf_reg.pas';

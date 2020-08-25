@@ -37,10 +37,10 @@ RemoteSymbols=0
 MinStackSize=16384
 MaxStackSize=1048576
 ImageBase=4194304
-ExeDescription=TDbf for Delphi 5 -runtime-
+ExeDescription=TDbf for Delphi 5
 [Directories]
 OutputDir=
-UnitOutputDir=.\dcu\designtime
+UnitOutputDir=.\dcu\runtime
 PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=
@@ -53,7 +53,7 @@ RunParams=
 HostApplication=
 [Language]
 ActiveLang=
-ProjectLang=
+ProjectLang=$00000407
 RootDir=
 [Version Info]
 IncludeVerInfo=1

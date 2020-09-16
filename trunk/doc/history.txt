@@ -52,6 +52,7 @@ following changes thx paulenandrew:
 - fix compatibility with Delphi 2009 and higher (fixes bug #90)
 - fix TDbf.RecNo and TDbf.PhysicalRecNo properties for an empty dataset
 - fix incorrect parser message if there is an argument type mismatch for an operator
+- fix potential Access Violation reading a floating point value in Free Pascal (introduced in v7.0)
 
 ------------------------
 V7.0.1
